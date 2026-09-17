@@ -1,17 +1,20 @@
-#include <signal.h>   // Required for signal handling
+#include <signal.h>  // Required for signal handling
+#include <stdbool.h> // Used for exit()
+#include <stdio.h>
 #include <stdlib.h>   // Used for exit()
-#include <stdbool.h>   // Used for exit()
 #include <wiringPi.h> // Include WiringPi library!
-#include "constants.h"
 
-const int ledPin = 26;
+#include "constants.h"
+#include "dht11.h"
+
+const int dht11Pin = 26;
 const int waitTime = 500;
 
 // Signal handler
 void handleSignal(int sig) {
   // Clean up GPIO states before exiting
-  digitalWrite(ledPin, LOW);
-  pinMode(ledPin, INPUT); // Reset pin back to input for safety
+  digitalWrite(dht11Pin, LOW);
+  pinMode(dht11Pin, INPUT); // Reset pin back to input for safety
 
   // Terminate the process cleanly
   exit(0);
@@ -20,15 +23,24 @@ void handleSignal(int sig) {
 int main(void) {
   // Setup stuff:
   signal(SIGINT, handleSignal);
-  wiringPiSetupGpio();     // Initialize wiringPi -- using Broadcom pin numbers
-  pinMode(ledPin, OUTPUT); // Set regular LED as output
-
-  while (true) {
-    digitalWrite(ledPin, LOW);
-    delay(waitTime);
-    digitalWrite(ledPin, HIGH);
-    delay(waitTime);
+  if (wiringPiSetupGpio() == -1) {
+    exit(1);
   }
+
+  const uint64_t measurement = get_measure(dht11Pin);
+  const Data data = data_decode(measurement);
+  printf("Relative Int = %d", data.relative_hum_int);
+  printf("Relative Dec = %d", data.relative_hum_dec);
+  printf("Temperature Int = %d", data.temperature_int);
+  printf("Temperature Dec = %d", data.relative_hum_dec);
+  printf("Checksum = %d", data.checksum);
+
+  // while (true) {
+  //   digitalWrite(dht11Pin, LOW);
+  //   delay(waitTime);
+  //   digitalWrite(dht11Pin, HIGH);
+  //   delay(waitTime);
+  // }
 
   return 0;
 }

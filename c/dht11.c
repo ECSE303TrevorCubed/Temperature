@@ -1,11 +1,9 @@
 #include <wiringPi.h> // Include WiringPi library!
 #include <stdbool.h>   // Used for exit()
 #include <stdint.h>   // Used for exit()
-#include "constants.h"
 
-typedef struct {
-    uint8_t data[5];
-} reading;
+#include "constants.h"
+#include "dht11.h"
 
 bool read_bit(int pin) {
     return pulseInNS(pin, HIGH, PULSE_TIMEOUT) > PULSE_THRESHOLD;
@@ -32,4 +30,15 @@ uint64_t get_temp(int pin) {
 uint64_t get_measure(int pin) {
     req_measure(pin);
     return get_temp(pin);
+}
+
+Data data_decode(uint64_t raw) {
+    Data data = {
+        .relative_hum_int = raw & 0xFF,
+        .relative_hum_dec = (raw >> 8) & 0xFF,
+        .temperature_int = (raw >> 16) & 0xFF,
+        .temperature_dec = (raw >> 24) & 0xFF,
+        .checksum = (raw >> 32) & 0xFF,
+    };
+    return data;
 }
