@@ -29,11 +29,11 @@ int main(void) {
 
   const uint64_t measurement = get_measure(dht11Pin);
   const Data data = data_decode(measurement);
-  printf("Relative Int = %d", data.relative_hum_int);
-  printf("Relative Dec = %d", data.relative_hum_dec);
-  printf("Temperature Int = %d", data.temperature_int);
-  printf("Temperature Dec = %d", data.relative_hum_dec);
-  printf("Checksum = %d", data.checksum);
+  printf("Relative Int = %d\n", data.relative_hum_int);
+  printf("Relative Dec = %d\n", data.relative_hum_dec);
+  printf("Temperature Int = %d\n", data.temperature_int);
+  printf("Temperature Dec = %d\n", data.relative_hum_dec);
+  printf("Checksum = %d\n", data.checksum);
 
   // while (true) {
   //   digitalWrite(dht11Pin, LOW);
