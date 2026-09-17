@@ -2,6 +2,7 @@
 #include <stdlib.h>   // Used for exit()
 #include <stdbool.h>   // Used for exit()
 #include <wiringPi.h> // Include WiringPi library!
+#include "constants.h"
 
 const int ledPin = 26;
 const int waitTime = 500;
@@ -15,10 +16,6 @@ void handleSignal(int sig) {
   // Terminate the process cleanly
   exit(0);
 }
-
-// bool read_bit(int pin) {
-//     pulseInNS(pin, int level, unsigned long long timeout_ns)
-// }
 
 int main(void) {
   // Setup stuff:
