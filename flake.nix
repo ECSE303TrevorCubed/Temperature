@@ -15,6 +15,37 @@
       system:
       let
         pkgs = import inputs.nixpkgs { inherit system; };
+        wiringpi' =
+          let
+            orig = pkgs.wiringpi;
+            version = "3.20";
+            src = pkgs.fetchFromGitHub {
+              owner = "WiringPi";
+              repo = "WiringPi";
+              rev = "v${version}";
+              hash = "sha256-9dOooR8XrhSfR+3g20HLy5kC5mnLHb1D+/uMlcqMPSk=";
+            };
+            mkSubProject = subprj: buildInputs: (orig.passthru.mkSubProject {
+              inherit subprj src buildInputs;
+            }).overrideAttrs (old: {
+              version = "3.20";
+              __intentionallyOverridingVersion = old.__intentionallyOverridingVersion or true;
+            });
+            wiringPi = mkSubProject "wiringPi" [ pkgs.libxcrypt ];
+            devLib = mkSubProject "devLib" [ wiringPi ];
+            wiringPiD = mkSubProject "wiringPiD" [ pkgs.libxcrypt wiringPi devLib ];
+            gpio = mkSubProject "gpio" [ pkgs.libxcrypt wiringPi devLib ];
+          in
+          pkgs.symlinkJoin {
+            pname = "wiringpi";
+            inherit version;
+            paths = [ wiringPi devLib wiringPiD gpio ];
+            passthru = {
+              inherit src mkSubProject;
+              inherit wiringPi devLib wiringPiD gpio;
+            };
+            meta = orig.meta;
+          };
         treefmtconfig = inputs.treefmt-nix.lib.evalModule pkgs {
           projectRootFile = "flake.nix";
           programs = {
@@ -93,10 +124,10 @@
               swig
             ]
             ++ [
-              wiringpi
+              wiringpi'
               venvDev
             ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ wiringpi ];
+            ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ wiringpi' ];
 
           env = {
             UV_NO_SYNC = "1";
@@ -125,8 +156,8 @@
                 )
                 {
                   temper_py = pkgs.callPackage ./nix/py.nix { inherit mkApplication pythonSet venv; };
-                  temper_c = pkgs.callPackage ./nix/c.nix { };
-                  temper_sh = pkgs.callPackage ./nix/sh.nix { };
+                  temper_c = pkgs.callPackage ./nix/c.nix { wiringpi = wiringpi'; };
+                  temper_sh = pkgs.callPackage ./nix/sh.nix { wiringpi = wiringpi'; };
                 };
             temper_report = pkgs.callPackage ./nix/report.nix { };
             ci = pkgs.callPackage ./nix/ci.nix {
