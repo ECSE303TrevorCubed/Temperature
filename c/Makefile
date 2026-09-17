@@ -3,7 +3,7 @@ CFLAGS ?= -Wall -Wextra
 LIBS = -lwiringPi
 
 TARGET = temper
-SRCS = main.c
+SRCS = dht11.c main.c
 
 all: $(TARGET)
 
