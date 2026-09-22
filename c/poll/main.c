@@ -117,6 +117,12 @@ void read_dht11_dat()
 			if ( counter > 16 )
 				dht11_dat[j / 8] |= 1;
 			j++;
+
+			printf("relative_hum_int = %d\n", dht11_dat[0]);
+    printf("relative_hum_dec = %d\n", dht11_dat[1]);
+    printf("temperature_int = %d\n", dht11_dat[2]);
+    printf("temperature_dec = %d\n", dht11_dat[3]);
+    printf("checksum = %d\n", dht11_dat[4]);
 		}
 	}
 
