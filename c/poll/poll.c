@@ -56,10 +56,13 @@ bool read_dht11_polling(int pin, Data *data) {
   }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
   if (sum == raw[4]) {
-    *data = (Data) {
-      .relative_hum_int = raw[0], .relative_hum_dec = raw[1],
-      .temperature_int = raw[2], .temperature_dec = raw[3], .checksum = raw[4],
-    }
+    *data = (Data){
+        .relative_hum_int = raw[0],
+        .relative_hum_dec = raw[1],
+        .temperature_int = raw[2],
+        .temperature_dec = raw[3],
+        .checksum = raw[4],
+    };
     return true;
   }
 
