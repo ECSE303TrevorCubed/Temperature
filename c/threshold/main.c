@@ -10,6 +10,8 @@
 // Signal handler for clean exit
 static void handleSignal(int sig) {
   (void)sig;
+  digitalWrite(LED_PIN, LOW);
+  pinMode(LED_PIN, INPUT);
   digitalWrite(DHT11_PIN, LOW);
   pinMode(DHT11_PIN, INPUT);
   exit(0);
@@ -21,7 +23,7 @@ int main(void) {
     exit(1);
   }
 
-  FILE* log = fopen("temper_interrupt.log", "a"); // append
+  FILE* log = fopen("temper_threshold.log", "a"); // append
   
   fclose(log);
 
