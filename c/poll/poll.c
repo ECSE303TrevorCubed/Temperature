@@ -56,7 +56,10 @@ bool read_dht11_polling(int pin, Data *data) {
 
   // Verify 40 bits received and checksum matches
   if (bits_recv < 40)
-    return false;
+  {
+      printf("Did not receive 40 bits: actual %d\n", bits_recv);
+return false;
+  }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
   if (sum == raw[4]) {
     data->relative_hum_int = raw[0];
@@ -67,5 +70,6 @@ bool read_dht11_polling(int pin, Data *data) {
     return true;
   }
 
+  printf("Checksum was wrong: actual %d\n", sum);
   return false;
 }
