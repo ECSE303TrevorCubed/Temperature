@@ -9,8 +9,8 @@ POLL_SRCS = poll/main.c poll/poll.c
 POLL_HDRS = poll/poll.h
 INTERR_SRCS = interrupt/main.c interrupt/interrupt.c
 INTERR_HDRS = interrupt/interrupt.h
-THRESH_SRCS = threshold/main.c poll/poll.c
-THRESH_HDRS = poll/poll.h
+THRESH_SRCS = threshold/main.c poll/poll.c threshold/threshold.c
+THRESH_HDRS = poll/poll.h threshold/threshold.h
 
 TARGETS = temper_poll temper_interr temper_thresh
 
