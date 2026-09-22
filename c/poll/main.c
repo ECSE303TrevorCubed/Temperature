@@ -7,11 +7,10 @@
 #include "constants.h"
 #include "dht11.h"
 
-const int dht11Pin = 26;
 const int waitTime = 500;
 
 // Signal handler
-void handleSignal(int sig) {
+static void handleSignal(int sig) {
   // Clean up GPIO states before exiting
   digitalWrite(dht11Pin, LOW);
   pinMode(dht11Pin, INPUT); // Reset pin back to input for safety
@@ -27,20 +26,20 @@ int main(void) {
     exit(1);
   }
 
-  const uint64_t measurement = get_measure(dht11Pin);
-  const Data data = data_decode(measurement);
-  printf("Relative Int = %d\n", data.relative_hum_int);
-  printf("Relative Dec = %d\n", data.relative_hum_dec);
-  printf("Temperature Int = %d\n", data.temperature_int);
-  printf("Temperature Dec = %d\n", data.relative_hum_dec);
-  printf("Checksum = %d\n", data.checksum);
+  FILE* log = fopen("temper_poll.log", "a"); // append
 
-  // while (true) {
-  //   digitalWrite(dht11Pin, LOW);
-  //   delay(waitTime);
-  //   digitalWrite(dht11Pin, HIGH);
-  //   delay(waitTime);
-  // }
+  Data data;
+  while (true) {
+      if (!read_dht11(DHT11_PIN, &data)) {
+          log_fail(log);
+          log_fail(stderr);
+      }
 
+      log_data(log, data);
+      log_data(stdout, data);
+      delay(LOOP_TIMEOUT_MS);
+  }
+
+  fclose(log);
   return 0;
 }

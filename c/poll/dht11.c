@@ -1,44 +1,79 @@
 #include <stdbool.h>  // Used for exit()
 #include <stdint.h>   // Used for exit()
+#include <assert.h>   // Used for exit()
+#include <stdio.h>
+#include <time.h>
 #include <wiringPi.h> // Include WiringPi library!
 
 #include "constants.h"
 #include "dht11.h"
 
-bool read_bit(int pin) {
-  return pulseInNS(pin, HIGH, PULSE_TIMEOUT) > PULSE_THRESHOLD;
-}
-
-void req_measure(int pin) {
+static void req_measure(int pin) {
+  // Start signal
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  delayMicroseconds(18000);
+  delayMicroseconds(18000); // Pull down for 18 ms
   digitalWrite(pin, HIGH);
-  delayMicroseconds(30);
+  delayMicroseconds(40); // Pull up for 40 microseconds
   pinMode(pin, INPUT);
 }
 
-uint64_t get_temp(int pin) {
-  uint64_t r = 0;
-  pulseInNS(pin, HIGH, PULSE_TIMEOUT);
-  for (int i = 0; i < 40; i++) {
-    r = (r << 1) | read_bit(pin);
-  }
-  return r;
+bool read_dht11(int pin, Data* data) {
+    assert(data && "Data out pointer invalid");
+    uint8_t raw[5] = {0, 0, 0, 0, 0};
+    uint8_t last_state = HIGH;
+    int delay_counter_us = 0;
+    uint8_t bits_recv = 0; // Counts to 40
+
+    req_measure(pin);
+    for (int i = 0; i < MAX_TIMINGS; ++i) {
+        delay_counter_us = 0;
+        while (digitalRead(pin) == last_state) {
+            delayMicroseconds(1);
+            if (++delay_counter_us == 255) return false; // Exceeded delay timeout
+        }
+        last_state = digitalRead(pin);
+        if (i < 4) continue; // ignore first 3 transitions
+
+        // Data bits on falling edges (even)
+        if (i % 2 == 0) {
+            raw[bits_recv / 8] <<= 1;
+            if (delay_counter_us > 16) raw[bits_recv / 8] |= 1;
+            bits_recv++;
+        }
+    }
+
+    // Verify 40 bits recv and checksum matches
+    if (bits_recv < 40) return false;
+    uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3]; // overflow? ig it wraps so its chill
+    if (sum == raw[4]) {
+        data->relative_hum_int = raw[0];
+        data->relative_hum_dec = raw[1];
+        data->temperature_int = raw[2];
+        data->temperature_dec = raw[3];
+        data->checksum = raw[4];
+        return true;
+    }
+    
+    return false;
 }
 
-uint64_t get_measure(int pin) {
-  req_measure(pin);
-  return get_temp(pin);
+// Includes both data and time int he output, formatted as '[%Y-%m-%d %H:%M:%S] '
+static void log_time(FILE* f) {
+    assert(f && "File pointer is not valid");
+    time_t now = time(NULL);
+    char buf[128];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(f, "[%s] ", buf);
 }
 
-Data data_decode(uint64_t raw) {
-  Data data = {
-      .relative_hum_int = raw & 0xFF,
-      .relative_hum_dec = (raw >> 8) & 0xFF,
-      .temperature_int = (raw >> 16) & 0xFF,
-      .temperature_dec = (raw >> 24) & 0xFF,
-      .checksum = (raw >> 32) & 0xFF,
-  };
-  return data;
+void log_fail(FILE* f) {
+    log_time(f);
+    fprintf(f, "Failed to read DHT11 data\n");
+}
+
+void log_data(FILE* f, Data data) {
+    log_time(f);
+    fprintf(f, "Temp: %d.%d C, Humidity: %d.%d %%, Checksum: %02X\n",
+        data.temperature_int, data.temperature_dec, data.relative_hum_int, data.relative_hum_dec, data.checksum);
 }

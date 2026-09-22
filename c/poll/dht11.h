@@ -1,6 +1,9 @@
-#include <stdint.h>
+#ifndef TEMPER_DHT11_H_
+#define TEMPER_DHT11_H_
 
-uint64_t get_measure(int pin);
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 typedef struct {
   uint8_t relative_hum_int;
@@ -10,4 +13,9 @@ typedef struct {
   uint8_t checksum;
 } Data;
 
-Data data_decode(uint64_t raw);
+// Returns false when the checksum is invalid
+bool read_dht11(int pin, Data* data);
+void log_fail(FILE* f);
+void log_data(FILE* f, Data data);
+
+#endif
