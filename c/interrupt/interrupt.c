@@ -27,6 +27,7 @@ static volatile bool read_ready = false;
 static volatile int measured_bit_high_time[TOTAL_BITS_PER_READ];
 
 static bool isr_registered = false;
+static int sensor_pin;
 
 /*
  * ISR for reading the sensor. There are several states which this ISR accounts for.
@@ -38,8 +39,8 @@ static void sensor_read_isr(void) {
         current_reading_bit_idx = 0;
         micros_previous_rising_edge = 0;
         current_state = INPUT_JUST_ENABLED;
-        digitalWrite(DHT11_PIN, HIGH);
-        pinMode(DHT11_PIN, INPUT);
+        digitalWrite(sensor_pin, HIGH);
+        pinMode(sensor_pin, INPUT);
       }
       break;
 
@@ -88,7 +89,7 @@ static void sensor_read_isr(void) {
       if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
         current_state = READ_COMPLETE;
         delayMicroseconds(40);
-        if (digitalRead(DHT11_PIN) == LOW) {
+        if (digitalRead(sensor_pin) == LOW) {
           bits_rcvd[current_reading_bit_idx - 1] = 0;
         } else {
           bits_rcvd[current_reading_bit_idx - 1] = 1;
@@ -115,11 +116,11 @@ static int extract_byte_at_offset(const volatile int *bits, int offset) {
 
 bool read_dht11_interrupt(int pin, Data *data) {
   assert(data && "Data out pointer must not be NULL");
-  DHT11_PIN = pin;
+  sensor_pin = pin;
 
   // Register the ISR if not already done
   if (!isr_registered) {
-    if (wiringPiISR(DHT11_PIN, INT_EDGE_RISING, sensor_read_isr) < 0) {
+    if (wiringPiISR(sensor_pin, INT_EDGE_RISING, sensor_read_isr) < 0) {
       return false;
     }
     isr_registered = true;
@@ -132,8 +133,8 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   // Initiate read: pull line low for 20ms to signal DHT11
   current_state = INIT_PULL_LINE_LOW;
-  pinMode(DHT11_PIN, OUTPUT);
-  digitalWrite(DHT11_PIN, LOW);
+  pinMode(sensor_pin, OUTPUT);
+  digitalWrite(sensor_pin, LOW);
   delay(20);
 
   // Set line ready and trigger ISR transition to INPUT
@@ -149,8 +150,8 @@ bool read_dht11_interrupt(int pin, Data *data) {
   }
 
   // Ensure pin is back to input with pull-up
-  pinMode(DHT11_PIN, INPUT);
-  pullUpDnControl(DHT11_PIN, PUD_UP);
+  pinMode(sensor_pin, INPUT);
+  pullUpDnControl(sensor_pin, PUD_UP);
 
   if (current_state != READ_COMPLETE) {
     return false;
