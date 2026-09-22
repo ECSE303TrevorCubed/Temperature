@@ -20,7 +20,7 @@ static void handleSignal(int sig) {
 int main(void) {
   // Setup stuff:
   signal(SIGINT, handleSignal);
-  if (wiringPiSetupGpio() == -1) {
+  if (wiringPiSetup() == -1) {
     exit(1);
   }
 
