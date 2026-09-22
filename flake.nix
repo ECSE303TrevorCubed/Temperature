@@ -25,24 +25,45 @@
               rev = "v${version}";
               hash = "sha256-9dOooR8XrhSfR+3g20HLy5kC5mnLHb1D+/uMlcqMPSk=";
             };
-            mkSubProject = subprj: buildInputs: (orig.passthru.mkSubProject {
-              inherit subprj src buildInputs;
-            }).overrideAttrs (old: {
-              version = "3.20";
-              __intentionallyOverridingVersion = old.__intentionallyOverridingVersion or true;
-            });
+            mkSubProject =
+              subprj: buildInputs:
+              (orig.passthru.mkSubProject {
+                inherit subprj src buildInputs;
+              }).overrideAttrs
+                (old: {
+                  version = "3.20";
+                  __intentionallyOverridingVersion = old.__intentionallyOverridingVersion or true;
+                });
             wiringPi = mkSubProject "wiringPi" [ pkgs.libxcrypt ];
             devLib = mkSubProject "devLib" [ wiringPi ];
-            wiringPiD = mkSubProject "wiringPiD" [ pkgs.libxcrypt wiringPi devLib ];
-            gpio = mkSubProject "gpio" [ pkgs.libxcrypt wiringPi devLib ];
+            wiringPiD = mkSubProject "wiringPiD" [
+              pkgs.libxcrypt
+              wiringPi
+              devLib
+            ];
+            gpio = mkSubProject "gpio" [
+              pkgs.libxcrypt
+              wiringPi
+              devLib
+            ];
           in
           pkgs.symlinkJoin {
             pname = "wiringpi";
             inherit version;
-            paths = [ wiringPi devLib wiringPiD gpio ];
+            paths = [
+              wiringPi
+              devLib
+              wiringPiD
+              gpio
+            ];
             passthru = {
               inherit src mkSubProject;
-              inherit wiringPi devLib wiringPiD gpio;
+              inherit
+                wiringPi
+                devLib
+                wiringPiD
+                gpio
+                ;
             };
             meta = orig.meta;
           };

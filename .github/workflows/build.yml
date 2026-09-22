@@ -1,4 +1,3 @@
-
 name: Releases
 on:
   push:
@@ -22,4 +21,3 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "result/*"
-
