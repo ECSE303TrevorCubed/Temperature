@@ -12,7 +12,7 @@ static void req_measure(int pin) {
   // Start signal
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  delayMicroseconds(18000); // Pull down for 18 ms
+  delay(18); // Pull down for 18 ms
   digitalWrite(pin, HIGH);
   delayMicroseconds(40); // Pull up for 40 microseconds
   pinMode(pin, INPUT);
@@ -38,7 +38,7 @@ bool read_dht11(int pin, Data* data) {
         // Data bits on falling edges (even)
         if (i % 2 == 0) {
             raw[bits_recv / 8] <<= 1;
-            if (delay_counter_us > 16) raw[bits_recv / 8] |= 1;
+            if (delay_counter_us > PULSE_WIDTH_THRESHOLD_US) raw[bits_recv / 8] |= 1;
             bits_recv++;
         }
     }

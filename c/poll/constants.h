@@ -3,7 +3,7 @@
 
 #define PULSE_WIDTH_THRESHOLD_US 45
 #define MAX_TIMINGS 85
-#define DHT11_PIN 25
+#define DHT11_PIN 26
 #define LOOP_TIMEOUT_MS 1000
 
 #endif

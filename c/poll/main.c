@@ -31,10 +31,11 @@ int main(void) {
       if (!read_dht11(DHT11_PIN, &data)) {
           log_fail(log);
           log_fail(stderr);
+      } else {
+          log_data(log, data);
+          log_data(stdout, data);
       }
-
-      log_data(log, data);
-      log_data(stdout, data);
+      
       delay(LOOP_TIMEOUT_MS);
   }
 
