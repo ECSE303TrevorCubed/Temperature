@@ -5,18 +5,22 @@ LIBS = -lwiringPi
 COMMON_SRCS = common/log.c
 COMMON_HDRS = common/constants.h common/log.h common/data.h
 
+POLL_SRCS = poll/main.c
+INTERR_SRCS = interrupt/main.c
+THRESH_SRCS = threshold/main.c
+
 TARGETS = temper_poll temper_interr temper_thresh
 
 all: $(TARGETS)
 
 temper_poll: poll/main.c $(COMMON_SRCS) $(COMMON_HDRS)
-	$(CC) $(CFLAGS) -o $@ poll/main.c $(COMMON_SRCS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(POLL_SRCS) $(COMMON_SRCS) $(LIBS)
 
 temper_interr: interrupt/main.c $(COMMON_SRCS) $(COMMON_HDRS)
-	$(CC) $(CFLAGS) -o $@ interrupt/main.c $(COMMON_SRCS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(INTERR_SRCS) $(COMMON_SRCS) $(LIBS)
 
 temper_thresh: threshold/main.c $(COMMON_SRCS) $(COMMON_HDRS)
-	$(CC) $(CFLAGS) -o $@ threshold/main.c $(COMMON_SRCS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(THRESH_SRCS) $(COMMON_SRCS) $(LIBS)
 
 install: $(TARGETS)
 	install -d $(DESTDIR)$(out)/bin

@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-struct Data;
+#include "data.h"
 
 void log_fail(FILE *f);
-void log_data(FILE *f, struct Data data);
+void log_data(FILE *f, Data data);
 
 #endif
