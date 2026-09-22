@@ -30,88 +30,95 @@ static bool isr_registered = false;
 static int sensor_pin;
 
 /*
- * ISR for reading the sensor. There are several states which this ISR accounts for.
+ * ISR for reading the sensor. There are several states which this ISR accounts
+ * for.
  */
 static void sensor_read_isr(void) {
   switch (current_state) {
-    case INIT_PULL_LINE_LOW:
-      if (read_ready) {
-        current_reading_bit_idx = 0;
-        micros_previous_rising_edge = 0;
-        current_state = INPUT_JUST_ENABLED;
-        digitalWrite(sensor_pin, HIGH);
-        pinMode(sensor_pin, INPUT);
-      }
-      break;
+  case INIT_PULL_LINE_LOW:
+    if (read_ready) {
+      current_reading_bit_idx = 0;
+      micros_previous_rising_edge = 0;
+      current_state = INPUT_JUST_ENABLED;
+      digitalWrite(sensor_pin, HIGH);
+      pinMode(sensor_pin, INPUT);
+    }
+    break;
 
-      // Temporary, single-use state. It serves to handle
-		// the case where the sensor pin is set to an input
-		// in the INIT_PULL_LINE_LOW state, triggering an
-		// unwanted interrupt.
-    case INPUT_JUST_ENABLED:
-      current_state = HIGH_ACK;
-      break;
+    // Temporary, single-use state. It serves to handle
+    // the case where the sensor pin is set to an input
+    // in the INIT_PULL_LINE_LOW state, triggering an
+    // unwanted interrupt.
+  case INPUT_JUST_ENABLED:
+    current_state = HIGH_ACK;
+    break;
 
-      // Entered at the beginning of the high response
-    case HIGH_ACK:
-      current_state = BIT_READ_RISING;
-      break;
+    // Entered at the beginning of the high response
+  case HIGH_ACK:
+    current_state = BIT_READ_RISING;
+    break;
 
-    case BIT_READ_RISING: {
-        // Get the time when this edge occurred
-      int current_us = micros();
+  case BIT_READ_RISING: {
+    // Get the time when this edge occurred
+    int current_us = micros();
 
-      // For the first bit, initialize rising edge timestamp as baseline.
-      if (current_reading_bit_idx == 0) {
-        micros_previous_rising_edge = current_us;
-        ++current_reading_bit_idx;
-        break;
-      }
-
-      // High time for previous bit = (total interval between rising edges) - pre-bit low time (50us)
-      int prev_bit_high_time = (current_us - micros_previous_rising_edge) - PRE_BIT_DELAY;
+    // For the first bit, initialize rising edge timestamp as baseline.
+    if (current_reading_bit_idx == 0) {
       micros_previous_rising_edge = current_us;
-
-      // Distinguish 0 vs 1 based on pulse high duration
-      if (prev_bit_high_time <= (MAX_TIME_FOR_ZERO_BIT_US + MAX_TIME_BUFFER)) {
-        bits_rcvd[current_reading_bit_idx - 1] = 0;
-      } else if (prev_bit_high_time <= (MAX_TIME_FOR_ONE_BIT_US + MAX_TIME_BUFFER)) {
-        bits_rcvd[current_reading_bit_idx - 1] = 1;
-      } else {
-        current_state = ERROR_STATE;
-      }
-
-      measured_bit_high_time[current_reading_bit_idx - 1] = prev_bit_high_time;
       ++current_reading_bit_idx;
-
-      // When the final bit (index 39) is reached, there is no subsequent rising edge.
-      // Delay 40us and poll the line: if still HIGH it's a 1, if LOW it's a 0.
-      if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
-        current_state = READ_COMPLETE;
-        delayMicroseconds(40);
-        if (digitalRead(sensor_pin) == LOW) {
-          bits_rcvd[current_reading_bit_idx - 1] = 0;
-        } else {
-          bits_rcvd[current_reading_bit_idx - 1] = 1;
-        }
-      }
       break;
     }
 
-    default:
-      break;
+    // High time for previous bit
+    int prev_bit_high_time =
+        (current_us - micros_previous_rising_edge) - PRE_BIT_DELAY;
+    micros_previous_rising_edge = current_us;
+
+    // Distinguish 0 vs 1 based on pulse high duration
+    if (prev_bit_high_time <= (MAX_TIME_FOR_ZERO_BIT_US + MAX_TIME_BUFFER)) {
+      bits_rcvd[current_reading_bit_idx - 1] = 0;
+    } else if (prev_bit_high_time <=
+               (MAX_TIME_FOR_ONE_BIT_US + MAX_TIME_BUFFER)) {
+      bits_rcvd[current_reading_bit_idx - 1] = 1;
+    } else {
+      current_state = ERROR_STATE;
+    }
+
+    // Account for the this bit's high time.
+    measured_bit_high_time[current_reading_bit_idx - 1] = prev_bit_high_time;
+    ++current_reading_bit_idx;
+
+    // At this point, the last bit time has to be read, so delay
+	// 40, then poll the input to see if it's high.
+	// If it is, then the current bit must be a 1.
+	// The side effect to this is that if this bit is 
+	// held too long, we won't be able to tell.
+    if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
+      current_state = READ_COMPLETE;
+      delayMicroseconds(40);
+      if (digitalRead(sensor_pin) == LOW) {
+        bits_rcvd[current_reading_bit_idx - 1] = 0;
+      } else {
+        bits_rcvd[current_reading_bit_idx - 1] = 1;
+      }
+    }
+    break;
+  }
+
+  default:
+    break;
   }
 }
 
 /*
  * Decodes an 8-bit integer starting at bits[offset].
  */
-static int extract_byte_at_offset(const volatile int *bits, int offset) {
+static uint8_t extract_byte_at_offset(const volatile int *bits, int offset) {
   int acc = 0;
   for (int bit_idx = 0; bit_idx < BITS_PER_BYTE; ++bit_idx) {
     acc |= (bits[offset + 7 - bit_idx] & 1) << bit_idx;
   }
-  return acc;
+  return (uint8_t)acc;
 }
 
 bool read_dht11_interrupt(int pin, Data *data) {
@@ -158,11 +165,11 @@ bool read_dht11_interrupt(int pin, Data *data) {
   }
 
   // Extract readings and checksum
-  uint8_t humid_int = (uint8_t)extract_byte_at_offset(bits_rcvd, 0);
-  uint8_t humid_dec = (uint8_t)extract_byte_at_offset(bits_rcvd, 8);
-  uint8_t temp_int = (uint8_t)extract_byte_at_offset(bits_rcvd, 16);
-  uint8_t temp_dec = (uint8_t)extract_byte_at_offset(bits_rcvd, 24);
-  uint8_t checksum_read = (uint8_t)extract_byte_at_offset(bits_rcvd, 32);
+  uint8_t humid_int = extract_byte_at_offset(bits_rcvd, 0);
+  uint8_t humid_dec = extract_byte_at_offset(bits_rcvd, 8);
+  uint8_t temp_int = extract_byte_at_offset(bits_rcvd, 16);
+  uint8_t temp_dec = extract_byte_at_offset(bits_rcvd, 24);
+  uint8_t checksum_read = extract_byte_at_offset(bits_rcvd, 32);
 
   uint8_t checksum_calc = humid_int + humid_dec + temp_int + temp_dec;
   if (checksum_read != checksum_calc) {

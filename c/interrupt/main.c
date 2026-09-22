@@ -23,14 +23,14 @@ static void handleSignal(int sig) {
 }
 
 int main(void) {
-    // Setup stuff:
+  // Setup stuff:
   signal(SIGINT, handleSignal);
   FILE *log = fopen("temper_interr.log", "a"); // append
   if (!log) {
     printf("Failed to open log file!\n");
     return 1;
   }
-  
+
   // Set high priority for approaching rt scheduling
   if (!try_set_prio(99)) {
     printf("Failed to set priority! Try running with sudo?\n");

@@ -23,8 +23,8 @@ static void handleSignal(int sig) {
 }
 
 int main(void) {
-    // Setup stuff:
-    signal(SIGINT, handleSignal);
+  // Setup stuff:
+  signal(SIGINT, handleSignal);
   FILE *log = fopen("temper_poll.log", "a"); // append
   if (!log) {
     printf("Failed to open log file!\n");
