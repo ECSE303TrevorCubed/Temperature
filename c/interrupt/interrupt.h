@@ -21,5 +21,4 @@ void release_gpio(void);
 int extract_val(volatile uint8_t * bits_rcvd, size_t offset);
 int gen_checksum(volatile uint8_t * bits_rcvd);
 
-
 #endif

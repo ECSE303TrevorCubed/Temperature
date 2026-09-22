@@ -9,6 +9,7 @@
 #include "data.h"
 #include "log.h"
 #include "poll.h"
+#include "prio.h"
 
 // Signal handler
 static void handleSignal(int sig) {
@@ -22,6 +23,12 @@ static void handleSignal(int sig) {
 }
 
 int main(void) {
+    // Set high priority for approaching rt scheduling
+    if (!try_set_prio(99)) {
+        printf("Failed to set priority! Try running with sudo?\n");
+        return 1;
+    }
+    
   // Setup stuff:
   signal(SIGINT, handleSignal);
   if (wiringPiSetup() == -1) {
