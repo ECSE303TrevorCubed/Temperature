@@ -5,7 +5,7 @@ LIBS = -lwiringPi
 COMMON_SRCS = common/log.c
 COMMON_HDRS = common/constants.h common/log.h common/data.h
 
-POLL_SRCS = poll/main.c
+POLL_SRCS = poll/main.c poll/poll.c
 INTERR_SRCS = interrupt/main.c
 THRESH_SRCS = threshold/main.c
 

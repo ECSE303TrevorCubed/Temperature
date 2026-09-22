@@ -6,6 +6,7 @@
 #include <wiringPi.h> // Include WiringPi library!
 
 #include "poll.h"
+#include "constants.h"
 
 static void req_measure(int pin) {
   // Start signal
