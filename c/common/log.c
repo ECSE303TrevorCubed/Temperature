@@ -33,5 +33,5 @@ void log_temperature(FILE *f, float temperature) {
     log_time(f);
     const char* desc = temperature > TEMPERATURE_THRESHOLD_CELSIUS ? "exceeded" : "is below";
     fprintf(f, "Temperature %s the threshold of %f C: %f C",
-             desc, TEMPERATURE_THRESHOLD_CELSIUS, current_average);
+             desc, TEMPERATURE_THRESHOLD_CELSIUS, temperature);
 }
