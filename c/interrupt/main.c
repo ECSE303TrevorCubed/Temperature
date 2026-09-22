@@ -5,7 +5,8 @@
 #include <wiringPi.h>
 
 #include "constants.h"
-#include "dht11.h"
+#include "log.h"
+#include "data.h"
 
 // Signal handler for clean exit
 static void handleSignal(int sig) {

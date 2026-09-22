@@ -5,7 +5,8 @@
 #include <wiringPi.h> // Include WiringPi library!
 
 #include "constants.h"
-#include "dht11.h"
+#include "log.h"
+#include "data.h"
 
 // Signal handler
 static void handleSignal(int sig) {
