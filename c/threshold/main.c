@@ -5,8 +5,8 @@
 #include <wiringPi.h>
 
 #include "constants.h"
-#include "log.h"
 #include "data.h"
+#include "log.h"
 
 // Signal handler for clean exit
 static void handleSignal(int sig) {
@@ -24,8 +24,8 @@ int main(void) {
     exit(1);
   }
 
-  FILE* log = fopen("temper_threshold.log", "a"); // append
-  
+  FILE *log = fopen("temper_threshold.log", "a"); // append
+
   fclose(log);
 
   return 0;

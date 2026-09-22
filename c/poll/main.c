@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <signal.h>  // Required for signal handling
 #include <stdbool.h> // Used for exit()
 #include <stdio.h>
@@ -5,12 +6,12 @@
 #include <wiringPi.h> // Include WiringPi library!
 
 #include "constants.h"
-#include "log.h"
 #include "data.h"
+#include "log.h"
 
 // Signal handler
 static void handleSignal(int sig) {
-    (void)sig;
+  (void)sig;
   // Clean up GPIO states before exiting
   digitalWrite(DHT11_PIN, LOW);
   pinMode(DHT11_PIN, INPUT); // Reset pin back to input for safety
@@ -30,46 +31,49 @@ static void req_measure(int pin) {
 }
 
 // Returns false when the checksum is invalid or read timed out
-bool read_dht11(int pin, Data* data) {
-    assert(data && "Data out pointer invalid");
-    uint8_t raw[5] = {0, 0, 0, 0, 0};
-    uint8_t last_state = HIGH;
-    int delay_counter_us = 0;
-    uint8_t bits_recv = 0; // Counts to 40
-  
-    req_measure(pin);
-    for (int i = 0; i < MAX_TIMINGS; ++i) {
-      delay_counter_us = 0;
-      while (digitalRead(pin) == last_state) {
-        delayMicroseconds(1);
-        if (++delay_counter_us == 255) return false; // Exceeded delay timeout
-      }
-      last_state = digitalRead(pin);
-      if (i < 4) continue; // ignore first 3 transitions
-  
-      // Data bits on falling edges (even)
-      if (i % 2 == 0) {
-        raw[bits_recv / 8] <<= 1;
-        if (delay_counter_us > PULSE_WIDTH_THRESHOLD_US) {
-          raw[bits_recv / 8] |= 1;
-        }
-        bits_recv++;
-      }
+bool read_dht11(int pin, Data *data) {
+  assert(data && "Data out pointer invalid");
+  uint8_t raw[5] = {0, 0, 0, 0, 0};
+  uint8_t last_state = HIGH;
+  int delay_counter_us = 0;
+  uint8_t bits_recv = 0; // Counts to 40
+
+  req_measure(pin);
+  for (int i = 0; i < MAX_TIMINGS; ++i) {
+    delay_counter_us = 0;
+    while (digitalRead(pin) == last_state) {
+      delayMicroseconds(1);
+      if (++delay_counter_us == 255)
+        return false; // Exceeded delay timeout
     }
-  
-    // Verify 40 bits received and checksum matches
-    if (bits_recv < 40) return false;
-    uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
-    if (sum == raw[4]) {
-      data->relative_hum_int = raw[0];
-      data->relative_hum_dec = raw[1];
-      data->temperature_int = raw[2];
-      data->temperature_dec = raw[3];
-      data->checksum = raw[4];
-      return true;
+    last_state = digitalRead(pin);
+    if (i < 4)
+      continue; // ignore first 3 transitions
+
+    // Data bits on falling edges (even)
+    if (i % 2 == 0) {
+      raw[bits_recv / 8] <<= 1;
+      if (delay_counter_us > PULSE_WIDTH_THRESHOLD_US) {
+        raw[bits_recv / 8] |= 1;
+      }
+      bits_recv++;
     }
-  
+  }
+
+  // Verify 40 bits received and checksum matches
+  if (bits_recv < 40)
     return false;
+  uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
+  if (sum == raw[4]) {
+    data->relative_hum_int = raw[0];
+    data->relative_hum_dec = raw[1];
+    data->temperature_int = raw[2];
+    data->temperature_dec = raw[3];
+    data->checksum = raw[4];
+    return true;
+  }
+
+  return false;
 }
 
 int main(void) {
@@ -79,19 +83,19 @@ int main(void) {
     exit(1);
   }
 
-  FILE* log = fopen("temper_poll.log", "a"); // append
+  FILE *log = fopen("temper_poll.log", "a"); // append
 
   Data data;
   while (true) {
-      if (!read_dht11(DHT11_PIN, &data)) {
-          log_fail(log);
-          log_fail(stderr);
-      } else {
-          log_data(log, data);
-          log_data(stdout, data);
-      }
-      
-      delay(LOOP_TIMEOUT_MS);
+    if (!read_dht11(DHT11_PIN, &data)) {
+      log_fail(log);
+      log_fail(stderr);
+    } else {
+      log_data(log, data);
+      log_data(stdout, data);
+    }
+
+    delay(LOOP_TIMEOUT_MS);
   }
 
   fclose(log);

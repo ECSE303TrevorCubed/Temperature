@@ -7,7 +7,7 @@
 
 struct Data;
 
-void log_fail(FILE* f);
-void log_data(FILE* f, struct Data data);
+void log_fail(FILE *f);
+void log_data(FILE *f, struct Data data);
 
 #endif
