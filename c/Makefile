@@ -9,7 +9,8 @@ POLL_SRCS = poll/main.c poll/poll.c
 POLL_HDRS = poll/poll.h
 INTERR_SRCS = interrupt/main.c interrupt/interrupt.c
 INTERR_HDRS = interrupt/interrupt.h
-THRESH_SRCS = threshold/main.c
+THRESH_SRCS = threshold/main.c poll/poll.c
+THRESH_HDRS = poll/poll.h
 
 TARGETS = temper_poll temper_interr temper_thresh
 
@@ -21,8 +22,8 @@ temper_poll: $(POLL_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(POLL_HDRS)
 temper_interr: $(INTERR_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(INTERR_HDRS)
 	$(CC) $(CFLAGS) -o $@ $(INTERR_SRCS) $(COMMON_SRCS) $(LIBS)
 
-temper_thresh: $(THRESH_SRCS) $(COMMON_SRCS) $(COMMON_HDRS)
-	$(CC) $(CFLAGS) -o $@ $(THRESH_SRCS) $(COMMON_SRCS) $(LIBS)
+temper_thresh: $(THRESH_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(THRESH_HDRS)
+	$(CC) $(CFLAGS) -Ipoll -o $@ $(THRESH_SRCS) $(COMMON_SRCS) $(LIBS)
 
 install: $(TARGETS)
 	install -d $(DESTDIR)$(out)/bin
