@@ -33,7 +33,7 @@ bool read_dht11_polling(int pin, Data *data) {
     while (digitalRead(pin) == last_state) {
       delayMicroseconds(1);
       if (++delay_counter_us == 255)
-        return false; // Exceeded delay timeout
+        break; // Exceeded delay timeout
     }
     last_state = digitalRead(pin);
     if (i < 4)
