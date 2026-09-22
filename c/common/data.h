@@ -1,8 +1,9 @@
+#ifndef DHT_DATA_H_
+#define DHT_DATA_H_
+
 #include <stdint.h>
 
-uint64_t get_measure(int pin);
-
-typedef struct {
+typedef struct Data {
   uint8_t relative_hum_int;
   uint8_t relative_hum_dec;
   uint8_t temperature_int;
@@ -10,4 +11,4 @@ typedef struct {
   uint8_t checksum;
 } Data;
 
-Data data_decode(uint64_t raw);
+#endif

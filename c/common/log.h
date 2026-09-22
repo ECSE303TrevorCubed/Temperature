@@ -1,0 +1,14 @@
+#ifndef TEMPER_LOG_H_
+#define TEMPER_LOG_H_
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "data.h"
+
+void log_fail(FILE *f);
+void log_data(FILE *f, Data data);
+void log_temperature(FILE *f, float temperature);
+
+#endif

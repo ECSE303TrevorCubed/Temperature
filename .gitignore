@@ -7,3 +7,4 @@ result-*
 .python-version
 .venv
 report/*.pdf
+*.log
