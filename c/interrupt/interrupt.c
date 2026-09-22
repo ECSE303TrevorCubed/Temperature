@@ -24,7 +24,6 @@ static volatile int current_reading_bit_idx = 0;
 static volatile int micros_previous_rising_edge = 0;
 static volatile int bits_rcvd[TOTAL_BITS_PER_READ];
 static volatile bool read_ready = false;
-static volatile int measured_bit_high_time[TOTAL_BITS_PER_READ];
 
 static bool isr_registered = false;
 static int sensor_pin;
@@ -44,23 +43,14 @@ static void sensor_read_isr(void) {
       pinMode(sensor_pin, INPUT);
     }
     break;
-
-    // Temporary, single-use state. It serves to handle
-    // the case where the sensor pin is set to an input
-    // in the INIT_PULL_LINE_LOW state, triggering an
-    // unwanted interrupt.
   case INPUT_JUST_ENABLED:
     current_state = HIGH_ACK;
     break;
-
-    // Entered at the beginning of the high response
   case HIGH_ACK:
     current_state = BIT_READ_RISING;
     break;
-
   case BIT_READ_RISING: {
-    // Get the time when this edge occurred
-    int current_us = micros();
+    int current_us = micros(); // Get the time when this edge occurred
 
     // For the first bit, initialize rising edge timestamp as baseline.
     if (current_reading_bit_idx == 0) {
@@ -84,15 +74,7 @@ static void sensor_read_isr(void) {
       current_state = ERROR_STATE;
     }
 
-    // Account for the this bit's high time.
-    measured_bit_high_time[current_reading_bit_idx - 1] = prev_bit_high_time;
-    ++current_reading_bit_idx;
-
-    // At this point, the last bit time has to be read, so delay
-	// 40, then poll the input to see if it's high.
-	// If it is, then the current bit must be a 1.
-	// The side effect to this is that if this bit is 
-	// held too long, we won't be able to tell.
+    ++current_reading_bit_idx; // Account for the this bit's high time
     if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
       current_state = READ_COMPLETE;
       delayMicroseconds(40);
@@ -134,15 +116,14 @@ bool read_dht11_interrupt(int pin, Data *data) {
   }
 
   // Clear buffers
-  memset((void *)bits_rcvd, -1, sizeof(bits_rcvd));
-  memset((void *)measured_bit_high_time, -1, sizeof(measured_bit_high_time));
+  memset(bits_rcvd, 0, sizeof(bits_rcvd));
   read_ready = false;
 
-  // Initiate read: pull line low for 20ms to signal DHT11
+  // Initiate read: pull line low for 18ms to signal DHT11
   current_state = INIT_PULL_LINE_LOW;
   pinMode(sensor_pin, OUTPUT);
   digitalWrite(sensor_pin, LOW);
-  delay(20);
+  delay(18);
 
   // Set line ready and trigger ISR transition to INPUT
   read_ready = true;
@@ -161,6 +142,7 @@ bool read_dht11_interrupt(int pin, Data *data) {
   pullUpDnControl(sensor_pin, PUD_UP);
 
   if (current_state != READ_COMPLETE) {
+    printf("Read did not complete\n");
     return false;
   }
 
@@ -171,16 +153,19 @@ bool read_dht11_interrupt(int pin, Data *data) {
   uint8_t temp_dec = extract_byte_at_offset(bits_rcvd, 24);
   uint8_t checksum_read = extract_byte_at_offset(bits_rcvd, 32);
 
-  uint8_t checksum_calc = humid_int + humid_dec + temp_int + temp_dec;
-  if (checksum_read != checksum_calc) {
+  uint8_t sum = humid_int + humid_dec + temp_int + temp_dec;
+  if (checksum_read != sum) {
+    printf("Checksum was wrong: actual %d\n", sum);
     return false;
   }
 
-  data->relative_hum_int = humid_int;
-  data->relative_hum_dec = humid_dec;
-  data->temperature_int = temp_int;
-  data->temperature_dec = temp_dec;
-  data->checksum = checksum_read;
+  *data = (Data){
+      .relative_hum_dec = humid_dec,
+      .relative_hum_int = humid_int,
+      .temperature_int = temp_int,
+      .temperature_dec = temp_dec,
+      .checksum = checksum_read,
+  };
 
   return true;
 }
