@@ -49,16 +49,11 @@ bool read_dht11_polling(int pin, Data *data) {
     }
   }
 
-  printf("relative_hum_int = %d\n", raw[0]);
-  printf("relative_hum_dec = %d\n", raw[1]);
-  printf("temperature_int = %d\n", raw[2]);
-  printf("temperature_dec = %d\n", raw[3]);
-
   // Verify 40 bits received and checksum matches
   if (bits_recv < 40)
   {
       printf("Did not receive 40 bits: actual %d\n", bits_recv);
-return false;
+      return false;
   }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
   if (sum == raw[4]) {
