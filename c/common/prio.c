@@ -1,8 +1,8 @@
+#include "prio.h"
+
 #include <sched.h>
 #include <stdbool.h>
 #include <string.h>
-
-#include "prio.h"
 
 bool try_set_prio(int pri) {
   struct sched_param sched;

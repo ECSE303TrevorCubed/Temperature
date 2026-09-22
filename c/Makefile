@@ -6,20 +6,22 @@ COMMON_SRCS = common/log.c common/prio.c
 COMMON_HDRS = common/constants.h common/log.h common/data.h common/prio.h
 
 POLL_SRCS = poll/main.c poll/poll.c
-INTERR_SRCS = interrupt/main.c
+POLL_HDRS = poll/poll.h
+INTERR_SRCS = interrupt/main.c interrupt/interrupt.c
+INTERR_HDRS = interrupt/interrupt.h
 THRESH_SRCS = threshold/main.c
 
 TARGETS = temper_poll temper_interr temper_thresh
 
 all: $(TARGETS)
 
-temper_poll: poll/main.c $(COMMON_SRCS) $(COMMON_HDRS)
+temper_poll: $(POLL_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(POLL_HDRS)
 	$(CC) $(CFLAGS) -o $@ $(POLL_SRCS) $(COMMON_SRCS) $(LIBS)
 
-temper_interr: interrupt/main.c $(COMMON_SRCS) $(COMMON_HDRS)
+temper_interr: $(INTERR_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(INTERR_HDRS)
 	$(CC) $(CFLAGS) -o $@ $(INTERR_SRCS) $(COMMON_SRCS) $(LIBS)
 
-temper_thresh: threshold/main.c $(COMMON_SRCS) $(COMMON_HDRS)
+temper_thresh: $(THRESH_SRCS) $(COMMON_SRCS) $(COMMON_HDRS)
 	$(CC) $(CFLAGS) -o $@ $(THRESH_SRCS) $(COMMON_SRCS) $(LIBS)
 
 install: $(TARGETS)

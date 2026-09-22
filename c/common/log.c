@@ -1,3 +1,5 @@
+#include "log.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -5,7 +7,6 @@
 #include <time.h>
 
 #include "data.h"
-#include "log.h"
 
 static void log_time(FILE *f) {
   assert(f && "File pointer is not valid");

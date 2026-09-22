@@ -13,5 +13,7 @@
 #define MAX_TIME_BUFFER 10
 #define BITS_PER_BYTE 8
 #define TOTAL_BITS_PER_READ 40
+#define RESPONSE_TIME_US 80
+#define PRE_BIT_DELAY 50
 
 #endif

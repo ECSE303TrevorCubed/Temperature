@@ -23,23 +23,27 @@ static void handleSignal(int sig) {
 }
 
 int main(void) {
+    // Setup stuff:
+    signal(SIGINT, handleSignal);
+  FILE *log = fopen("temper_poll.log", "a"); // append
+  if (!log) {
+    printf("Failed to open log file!\n");
+    return 1;
+  }
+
   // Set high priority for approaching rt scheduling
   if (!try_set_prio(99)) {
     printf("Failed to set priority! Try running with sudo?\n");
     return 1;
   }
 
-  // Setup stuff:
-  signal(SIGINT, handleSignal);
   if (wiringPiSetup() == -1) {
     exit(1);
   }
 
-  FILE *log = fopen("temper_poll.log", "a"); // append
-
   Data data;
   while (true) {
-    if (!read_dht11(DHT11_PIN, &data)) {
+    if (!read_dht11_polling(DHT11_PIN, &data)) {
       log_fail(log);
       log_fail(stderr);
     } else {

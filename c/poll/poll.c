@@ -1,3 +1,5 @@
+#include "poll.h"
+
 #include <assert.h>
 #include <signal.h>  // Required for signal handling
 #include <stdbool.h> // Used for exit()
@@ -6,7 +8,6 @@
 #include <wiringPi.h> // Include WiringPi library!
 
 #include "constants.h"
-#include "poll.h"
 
 static void req_measure(int pin) {
   // Start signal
@@ -19,7 +20,7 @@ static void req_measure(int pin) {
 }
 
 // Returns false when the checksum is invalid or read timed out
-bool read_dht11(int pin, Data *data) {
+bool read_dht11_polling(int pin, Data *data) {
   assert(data && "Data out pointer invalid");
   uint8_t raw[5] = {0, 0, 0, 0, 0};
   uint8_t last_state = HIGH;
