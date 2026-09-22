@@ -9,5 +9,6 @@
 
 void log_fail(FILE *f);
 void log_data(FILE *f, Data data);
+void log_temperature(FILE *f, float temperature);
 
 #endif

@@ -7,6 +7,7 @@
 #include <time.h>
 
 #include "data.h"
+#include "constants.h"
 
 static void log_time(FILE *f) {
   assert(f && "File pointer is not valid");
@@ -26,4 +27,11 @@ void log_data(FILE *f, Data data) {
   fprintf(f, "Temp: %d.%d C, Humidity: %d.%d %%, Checksum: %02X\n",
           data.temperature_int, data.temperature_dec, data.relative_hum_int,
           data.relative_hum_dec, data.checksum);
+}
+
+void log_temperature(FILE *f, float temperature) {
+    log_time(f);
+    const char* desc = temperature > TEMPERATURE_THRESHOLD_CELSIUS ? "exceeded" : "is below";
+    log_data(log, "Temperature %s the threshold of %f C: %f C",
+             desc, TEMPERATURE_THRESHOLD_CELSIUS, current_average);
 }

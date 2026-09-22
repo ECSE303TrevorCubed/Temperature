@@ -40,18 +40,13 @@ int main(void) {
     record_temperature(data.temperature_int, data.temperature_dec);
     float current_average = average_celsius();
     if (current_average > TEMPERATURE_THRESHOLD_CELSIUS) {
-      log_data(log, "Temperature exceeded the threshold: %f C",
-               current_average);
-      log_data(stdout, "Temperature exceeded the threshold: %f C",
-               current_average);
       digitalWrite(LED_PIN, HIGH);
     } else {
-      log_data(log, "Temperature dropped below the threshold: %f C",
-               current_average);
-      log_data(stdout, "Temperature dropped below the threshold: %f C",
-               current_average);
       digitalWrite(LED_PIN, LOW);
     }
+
+    log_temperature(log, current_average);
+    log_temperature(stdout, current_average);
 
     delay(LOOP_TIMEOUT_MS);
   }
