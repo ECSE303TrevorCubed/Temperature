@@ -5,8 +5,8 @@
 #include <stdlib.h>   // Used for exit()
 #include <wiringPi.h> // Include WiringPi library!
 
-#include "poll.h"
 #include "constants.h"
+#include "poll.h"
 
 static void req_measure(int pin) {
   // Start signal
