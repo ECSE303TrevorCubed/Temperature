@@ -34,19 +34,20 @@ int main(void) {
     if (!read_dht11_polling(DHT11_PIN, &data)) {
       log_fail(log);
       log_fail(stderr);
-      continue;
     }
 
-    record_temperature(data.temperature_int, data.temperature_dec);
-    float current_average = average_celsius();
-    if (current_average > TEMPERATURE_THRESHOLD_CELSIUS) {
-      digitalWrite(LED_PIN, HIGH);
-    } else {
-      digitalWrite(LED_PIN, LOW);
-    }
+    else {
+      record_temperature(data.temperature_int, data.temperature_dec);
+      float current_average = average_celsius();
+      if (current_average > TEMPERATURE_THRESHOLD_CELSIUS) {
+        digitalWrite(LED_PIN, HIGH);
+      } else {
+        digitalWrite(LED_PIN, LOW);
+      }
 
-    log_temperature(log, current_average);
-    log_temperature(stdout, current_average);
+      log_temperature(log, current_average);
+      log_temperature(stdout, current_average);
+    }
 
     delay(LOOP_TIMEOUT_MS);
   }
