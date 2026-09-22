@@ -7,13 +7,11 @@
 #include "constants.h"
 #include "dht11.h"
 
-const int waitTime = 500;
-
 // Signal handler
 static void handleSignal(int sig) {
   // Clean up GPIO states before exiting
-  digitalWrite(dht11Pin, LOW);
-  pinMode(dht11Pin, INPUT); // Reset pin back to input for safety
+  digitalWrite(DHT11_PIN, LOW);
+  pinMode(DHT11_PIN, INPUT); // Reset pin back to input for safety
 
   // Terminate the process cleanly
   exit(0);
