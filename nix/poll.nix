@@ -6,9 +6,9 @@
   ...
 }:
 stdenv.mkDerivation {
-  pname = "temper_c";
+  pname = "temper_poll_c";
   version = "0.0.1";
-  src = ../c;
+  src = ../c/poll;
   nativeBuildInputs = [
     pkg-config
   ];
