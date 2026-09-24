@@ -8,6 +8,7 @@
 #include "data.h"
 #include "log.h"
 #include "poll.h"
+#include "prio.h"
 #include "threshold.h"
 
 // Signal handler for clean exit
@@ -22,6 +23,13 @@ static void handleSignal(int sig) {
 
 int main(void) {
   signal(SIGINT, handleSignal);
+
+  // Set high priority for approaching rt scheduling
+  if (!try_set_prio(99)) {
+    printf("Failed to set priority! Try running with sudo?\n");
+    return 1;
+  }
+
   if (wiringPiSetup() == -1) {
     exit(1);
   }

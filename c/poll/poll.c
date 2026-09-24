@@ -10,13 +10,16 @@
 #include "constants.h"
 
 static void req_measure(int pin) {
-  // Start signal
+  // Start signal: host pulls low for at least 18ms (20ms is recommended)
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  delay(18); // Pull down for 18 ms
+  delay(20);
+
+  // Pull up for ~30us then switch to input with pull-up resistor
   digitalWrite(pin, HIGH);
-  delayMicroseconds(40); // Pull up for 40 microseconds
+  delayMicroseconds(30);
   pinMode(pin, INPUT);
+  pullUpDnControl(pin, PUD_UP);
 }
 
 // Returns false when the checksum is invalid or read timed out
@@ -24,33 +27,46 @@ bool read_dht11_polling(int pin, Data *data) {
   assert(data && "Data out pointer invalid");
   uint8_t raw[5] = {0, 0, 0, 0, 0};
   uint8_t last_state = HIGH;
-  int delay_counter_us = 0;
   uint8_t bits_recv = 0; // Counts to 40
 
   req_measure(pin);
   for (int i = 0; i < MAX_TIMINGS; ++i) {
-    delay_counter_us = 0;
+    unsigned int start_us = micros();
     while (digitalRead(pin) == last_state) {
-      delayMicroseconds(1);
-      if (++delay_counter_us == 255)
+      if ((micros() - start_us) > 255) {
         break; // Exceeded delay timeout
-    }
-    last_state = digitalRead(pin);
-    if (i < 4)
-      continue; // ignore first 3 transitions
-
-    // Data bits on falling edges (even)
-    if (i % 2 == 0) {
-      raw[bits_recv / 8] <<= 1;
-      if (delay_counter_us > PULSE_WIDTH_THRESHOLD_US) {
-        raw[bits_recv / 8] |= 1;
       }
-      bits_recv++;
+    }
+    unsigned int duration_us = micros() - start_us;
+    last_state = digitalRead(pin);
+
+    // If a timeout occurred, stop reading
+    if (duration_us >= 255) {
+      break;
+    }
+
+    // Ignore the first 3 transitions (sensor initial response)
+    if (i < 4) {
+      continue;
+    }
+
+    // Data bits on falling edges (even index)
+    if (i % 2 == 0) {
+      if (bits_recv < TOTAL_BITS_PER_READ) {
+        raw[bits_recv / 8] <<= 1;
+        if (duration_us > PULSE_WIDTH_THRESHOLD_US) {
+          raw[bits_recv / 8] |= 1;
+        }
+        bits_recv++;
+        if (bits_recv == TOTAL_BITS_PER_READ) {
+          break; // All 40 bits successfully received
+        }
+      }
     }
   }
 
   // Verify 40 bits received and checksum matches
-  if (bits_recv < 40) {
+  if (bits_recv < TOTAL_BITS_PER_READ) {
     printf("Did not receive 40 bits: actual %d\n", bits_recv);
     return false;
   }

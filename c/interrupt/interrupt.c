@@ -39,8 +39,8 @@ static void sensor_read_isr(void) {
       current_reading_bit_idx = 0;
       micros_previous_rising_edge = 0;
       current_state = INPUT_JUST_ENABLED;
-      digitalWrite(sensor_pin, HIGH);
       pinMode(sensor_pin, INPUT);
+      pullUpDnControl(sensor_pin, PUD_UP);
     }
     break;
   case INPUT_JUST_ENABLED:
@@ -59,25 +59,36 @@ static void sensor_read_isr(void) {
       break;
     }
 
-    // High time for previous bit
-    int prev_bit_high_time =
-        (current_us - micros_previous_rising_edge) - PRE_BIT_DELAY;
+    // Time difference between consecutive rising edges
+    int delta = current_us - micros_previous_rising_edge;
     micros_previous_rising_edge = current_us;
 
-    // Distinguish 0 vs 1 based on pulse high duration
-    if (prev_bit_high_time <= (MAX_TIME_FOR_ZERO_BIT_US + MAX_TIME_BUFFER)) {
-      bits_rcvd[current_reading_bit_idx - 1] = 0;
-    } else if (prev_bit_high_time <=
-               (MAX_TIME_FOR_ONE_BIT_US + MAX_TIME_BUFFER)) {
-      bits_rcvd[current_reading_bit_idx - 1] = 1;
-    } else {
+    // A complete bit cycle (50us low pre-bit + data high):
+    // '0' bit: ~50us low + ~28us high = ~78us total
+    // '1' bit: ~50us low + ~70us high = ~120us total
+    int prev_bit_high_time = delta - PRE_BIT_DELAY;
+
+    // Check for abnormal cycle timing (sensor disconnected, missed edges)
+    if (delta > 250 || delta < 30) {
       current_state = ERROR_STATE;
+      break;
     }
 
-    ++current_reading_bit_idx; // Account for the this bit's high time
+    // Distinguish 0 vs 1 based on pulse high duration
+    if (prev_bit_high_time <= PULSE_WIDTH_THRESHOLD_US) {
+      bits_rcvd[current_reading_bit_idx - 1] = 0;
+    } else {
+      bits_rcvd[current_reading_bit_idx - 1] = 1;
+    }
+
+    ++current_reading_bit_idx; // Account for this bit's high time
     if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
       current_state = READ_COMPLETE;
-      delayMicroseconds(40);
+      // Wait for pulse discrimination window (~40us after rising edge)
+      int elapsed = micros() - current_us;
+      if (elapsed < 40) {
+        delayMicroseconds(40 - elapsed);
+      }
       if (digitalRead(sensor_pin) == LOW) {
         bits_rcvd[current_reading_bit_idx - 1] = 0;
       } else {
@@ -119,15 +130,35 @@ bool read_dht11_interrupt(int pin, Data *data) {
   memset((void *)bits_rcvd, 0, sizeof(bits_rcvd));
   read_ready = false;
 
-  // Initiate read: pull line low for 18ms to signal DHT11
+  // Initiate read: pull line low for 20ms to signal DHT11
   current_state = INIT_PULL_LINE_LOW;
   pinMode(sensor_pin, OUTPUT);
   digitalWrite(sensor_pin, LOW);
-  delay(18);
+  delay(20);
 
-  // Set line ready and trigger ISR transition to INPUT
+  // Switch to input with pull-up resistor to release the line
+  pinMode(sensor_pin, INPUT);
+  pullUpDnControl(sensor_pin, PUD_UP);
+
+  // Wait for DHT11 to acknowledge by pulling the line low (nominally 20-40us)
+  int wait_us = 0;
+  while (digitalRead(sensor_pin) == HIGH && wait_us < 100) {
+    delayMicroseconds(1);
+    wait_us++;
+  }
+  if (digitalRead(sensor_pin) == HIGH) {
+    // Sensor did not pull the line low
+    current_state = ERROR_STATE;
+    return false;
+  }
+
+  // The DHT11 is now asserting its 80us LOW response.
+  // The next rising edge on the bus is guaranteed to be the DHT11's 80us HIGH
+  // ACK pulse.
+  current_reading_bit_idx = 0;
+  micros_previous_rising_edge = 0;
+  current_state = HIGH_ACK;
   read_ready = true;
-  sensor_read_isr();
 
   // Wait for ISR state machine completion or timeout (max 100ms)
   int timeout_us = 0;
@@ -137,14 +168,16 @@ bool read_dht11_interrupt(int pin, Data *data) {
     timeout_us += 500;
   }
 
-  // Ensure pin is back to input with pull-up
+  // Ensure pin is back to input with pull-up and reset state
   pinMode(sensor_pin, INPUT);
   pullUpDnControl(sensor_pin, PUD_UP);
 
   if (current_state != READ_COMPLETE) {
+    current_state = READ_COMPLETE;
     printf("Read did not complete\n");
     return false;
   }
+  current_state = READ_COMPLETE;
 
   // Extract readings and checksum
   uint8_t humid_int = extract_byte_at_offset(bits_rcvd, 0);
