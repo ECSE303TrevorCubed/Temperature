@@ -121,9 +121,13 @@ We found that this part was less reliable than part 2. This was due to the inter
   [High during reads due to spinning on the delay counter],
   [Low as the CPU can be idle until a rising edge fires],
 
-  [Sensitivity], [Count will overflow if preempted], [Sensitive to latency in response to interrupts],
+  [Sensitivity],
+  [Count will overflow if preempted],
+  [Sensitive to latency in response to interrupts],
 
-  [Complexity], [Very simple linear loop], [Complex state machine requiring more boilerplate and timestamp tracking],
+  [Complexity],
+  [Very simple linear loop],
+  [Complex state machine requiring more boilerplate and timestamp tracking],
 
   [Priority],
   [Benefits from real time round robin sched],
@@ -204,4 +208,5 @@ The five entries from this log, in order, show: A baseline reading of the room, 
   - Pull up meaning from the data pin to the power rail
   - A resistor of 10 kOhm was used, though some guides mentioned 5 kOhm
 - The DHT11 sensor is super inconsistent, can be made more consistent by setting the process to a higher priority via `sched.h`
-- We demoed to the professor on Thursday, September 24th.
+- We demoed Parts 1 and 2 to the professor on Thursday, September 24th.
+- We demoed Part 3 to the TA on Thursday, September 24th.
