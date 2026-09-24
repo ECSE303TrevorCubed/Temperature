@@ -39,16 +39,19 @@ static void sensor_read_isr(void) {
       current_reading_bit_idx = 0;
       micros_previous_rising_edge = 0;
       current_state = INPUT_JUST_ENABLED;
+      digitalWrite(sensor_pin, HIGH);
       pinMode(sensor_pin, INPUT);
-      pullUpDnControl(sensor_pin, PUD_UP);
     }
     break;
+
   case INPUT_JUST_ENABLED:
     current_state = HIGH_ACK;
     break;
+
   case HIGH_ACK:
     current_state = BIT_READ_RISING;
     break;
+
   case BIT_READ_RISING: {
     int current_us = micros(); // Get the time when this edge occurred
 
@@ -59,22 +62,13 @@ static void sensor_read_isr(void) {
       break;
     }
 
-    // Time difference between consecutive rising edges
-    int delta = current_us - micros_previous_rising_edge;
+    // High time for previous bit: delta between rising edges minus pre-bit low (50us)
+    int prev_bit_high_time =
+        (current_us - micros_previous_rising_edge) - PRE_BIT_DELAY;
     micros_previous_rising_edge = current_us;
 
-    // A complete bit cycle (50us low pre-bit + data high):
-    // '0' bit: ~50us low + ~28us high = ~78us total
-    // '1' bit: ~50us low + ~70us high = ~120us total
-    int prev_bit_high_time = delta - PRE_BIT_DELAY;
-
-    // Check for abnormal cycle timing (sensor disconnected, missed edges)
-    if (delta > 250 || delta < 30) {
-      current_state = ERROR_STATE;
-      break;
-    }
-
     // Distinguish 0 vs 1 based on pulse high duration
+    // 0-bit high is ~28us, 1-bit high is ~70us. Midpoint is ~45us.
     if (prev_bit_high_time <= PULSE_WIDTH_THRESHOLD_US) {
       bits_rcvd[current_reading_bit_idx - 1] = 0;
     } else {
@@ -84,11 +78,7 @@ static void sensor_read_isr(void) {
     ++current_reading_bit_idx; // Account for this bit's high time
     if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
       current_state = READ_COMPLETE;
-      // Wait for pulse discrimination window (~40us after rising edge)
-      int elapsed = micros() - current_us;
-      if (elapsed < 40) {
-        delayMicroseconds(40 - elapsed);
-      }
+      delayMicroseconds(35);
       if (digitalRead(sensor_pin) == LOW) {
         bits_rcvd[current_reading_bit_idx - 1] = 0;
       } else {
@@ -120,6 +110,7 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   // Register the ISR if not already done
   if (!isr_registered) {
+    pullUpDnControl(sensor_pin, PUD_UP);
     if (wiringPiISR(sensor_pin, INT_EDGE_RISING, sensor_read_isr) < 0) {
       return false;
     }
@@ -130,35 +121,15 @@ bool read_dht11_interrupt(int pin, Data *data) {
   memset((void *)bits_rcvd, 0, sizeof(bits_rcvd));
   read_ready = false;
 
-  // Initiate read: pull line low for 20ms to signal DHT11
+  // Initiate read: pull line low for 18ms to signal DHT11
   current_state = INIT_PULL_LINE_LOW;
   pinMode(sensor_pin, OUTPUT);
   digitalWrite(sensor_pin, LOW);
-  delay(20);
+  delay(18);
 
-  // Switch to input with pull-up resistor to release the line
-  pinMode(sensor_pin, INPUT);
-  pullUpDnControl(sensor_pin, PUD_UP);
-
-  // Wait for DHT11 to acknowledge by pulling the line low (nominally 20-40us)
-  int wait_us = 0;
-  while (digitalRead(sensor_pin) == HIGH && wait_us < 100) {
-    delayMicroseconds(1);
-    wait_us++;
-  }
-  if (digitalRead(sensor_pin) == HIGH) {
-    // Sensor did not pull the line low
-    current_state = ERROR_STATE;
-    return false;
-  }
-
-  // The DHT11 is now asserting its 80us LOW response.
-  // The next rising edge on the bus is guaranteed to be the DHT11's 80us HIGH
-  // ACK pulse.
-  current_reading_bit_idx = 0;
-  micros_previous_rising_edge = 0;
-  current_state = HIGH_ACK;
+  // Set line ready and trigger ISR transition to INPUT
   read_ready = true;
+  sensor_read_isr();
 
   // Wait for ISR state machine completion or timeout (max 100ms)
   int timeout_us = 0;
@@ -174,7 +145,7 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   if (current_state != READ_COMPLETE) {
     current_state = READ_COMPLETE;
-    printf("Read did not complete\n");
+    fprintf(stderr, "Read did not complete\n");
     return false;
   }
   current_state = READ_COMPLETE;
@@ -188,7 +159,8 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   uint8_t sum = humid_int + humid_dec + temp_int + temp_dec;
   if (checksum_read != sum) {
-    printf("Checksum was wrong: actual %d\n", sum);
+    fprintf(stderr, "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
+           sum, checksum_read, humid_int, humid_dec, temp_int, temp_dec, checksum_read);
     return false;
   }
 

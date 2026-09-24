@@ -10,16 +10,13 @@
 #include "constants.h"
 
 static void req_measure(int pin) {
-  // Start signal: host pulls low for at least 18ms (20ms is recommended)
+  // Start signal: pull down for 18 ms, pull up for 40 us
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  delay(20);
-
-  // Pull up for ~30us then switch to input with pull-up resistor
+  delay(18);
   digitalWrite(pin, HIGH);
-  delayMicroseconds(30);
+  delayMicroseconds(40);
   pinMode(pin, INPUT);
-  pullUpDnControl(pin, PUD_UP);
 }
 
 // Returns false when the checksum is invalid or read timed out
@@ -27,21 +24,22 @@ bool read_dht11_polling(int pin, Data *data) {
   assert(data && "Data out pointer invalid");
   uint8_t raw[5] = {0, 0, 0, 0, 0};
   uint8_t last_state = HIGH;
+  int delay_counter_us = 0;
   uint8_t bits_recv = 0; // Counts to 40
 
   req_measure(pin);
   for (int i = 0; i < MAX_TIMINGS; ++i) {
-    unsigned int start_us = micros();
+    delay_counter_us = 0;
     while (digitalRead(pin) == last_state) {
-      if ((micros() - start_us) > 255) {
+      delayMicroseconds(1);
+      if (++delay_counter_us == 255) {
         break; // Exceeded delay timeout
       }
     }
-    unsigned int duration_us = micros() - start_us;
     last_state = digitalRead(pin);
 
-    // If a timeout occurred, stop reading
-    if (duration_us >= 255) {
+    // If timeout occurred, stop reading
+    if (delay_counter_us == 255) {
       break;
     }
 
@@ -52,22 +50,21 @@ bool read_dht11_polling(int pin, Data *data) {
 
     // Data bits on falling edges (even index)
     if (i % 2 == 0) {
-      if (bits_recv < TOTAL_BITS_PER_READ) {
-        raw[bits_recv / 8] <<= 1;
-        if (duration_us > PULSE_WIDTH_THRESHOLD_US) {
-          raw[bits_recv / 8] |= 1;
-        }
-        bits_recv++;
-        if (bits_recv == TOTAL_BITS_PER_READ) {
-          break; // All 40 bits successfully received
-        }
+      raw[bits_recv / 8] <<= 1;
+      // Midpoint between 0-bit count (~12-15) and 1-bit count (~35-45)
+      if (delay_counter_us > POLL_COUNTER_THRESHOLD) {
+        raw[bits_recv / 8] |= 1;
+      }
+      bits_recv++;
+      if (bits_recv >= TOTAL_BITS_PER_READ) {
+        break; // All 40 bits successfully received; prevents raw[5] buffer overflow
       }
     }
   }
 
   // Verify 40 bits received and checksum matches
   if (bits_recv < TOTAL_BITS_PER_READ) {
-    printf("Did not receive 40 bits: actual %d\n", bits_recv);
+    printf(stderr, "Did not receive 40 bits: actual %d\n", bits_recv);
     return false;
   }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
@@ -82,6 +79,7 @@ bool read_dht11_polling(int pin, Data *data) {
     return true;
   }
 
-  printf("Checksum was wrong: actual %d\n", sum);
+  printf(stderr, "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
+         sum, raw[4], raw[0], raw[1], raw[2], raw[3], raw[4]);
   return false;
 }
