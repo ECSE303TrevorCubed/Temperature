@@ -17,6 +17,7 @@ static void req_measure(int pin) {
   digitalWrite(pin, HIGH);
   delayMicroseconds(40);
   pinMode(pin, INPUT);
+  pullUpDnControl(pin, PUD_UP);
 }
 
 // Returns false when the checksum is invalid or read timed out
@@ -40,13 +41,16 @@ bool read_dht11_polling(int pin, Data *data) {
 
     // Ignore the first 3 transitions (sensor initial response)
     if (i < 4) {
+      if (delay_counter_us == 255) {
+        break;
+      }
       continue;
     }
 
     // Data bits on falling edges (even index)
     if (i % 2 == 0) {
       raw[bits_recv / 8] <<= 1;
-      // Threshold 16 is between 0-bit count (~10-14) and 1-bit count (~28-40)
+      // Threshold 27 separates 0-bit count (~18-21) and 1-bit count (~35-44)
       if (delay_counter_us > POLL_COUNTER_THRESHOLD) {
         raw[bits_recv / 8] |= 1;
       }

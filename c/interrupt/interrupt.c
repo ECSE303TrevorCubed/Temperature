@@ -124,6 +124,8 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   // Clear buffers
   memset((void *)bits_rcvd, 0, sizeof(bits_rcvd));
+  current_reading_bit_idx = 0;
+  micros_previous_rising_edge = 0;
   read_ready = false;
 
   // Initiate read: pull line low for 18ms to signal DHT11
