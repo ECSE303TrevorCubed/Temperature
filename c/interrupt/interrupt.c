@@ -78,11 +78,16 @@ static void sensor_read_isr(void) {
     ++current_reading_bit_idx; // Account for this bit's high time
     if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
       current_state = READ_COMPLETE;
-      delayMicroseconds(35);
-      if (digitalRead(sensor_pin) == LOW) {
-        bits_rcvd[current_reading_bit_idx - 1] = 0;
-      } else {
+      // Measure remaining high duration of bit 39
+      int bit39_counter = 0;
+      while (digitalRead(sensor_pin) == HIGH && bit39_counter < 100) {
+        delayMicroseconds(1);
+        bit39_counter++;
+      }
+      if (bit39_counter > 15) {
         bits_rcvd[current_reading_bit_idx - 1] = 1;
+      } else {
+        bits_rcvd[current_reading_bit_idx - 1] = 0;
       }
     }
     break;

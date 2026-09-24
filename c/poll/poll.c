@@ -38,11 +38,6 @@ bool read_dht11_polling(int pin, Data *data) {
     }
     last_state = digitalRead(pin);
 
-    // If timeout occurred, stop reading
-    if (delay_counter_us == 255) {
-      break;
-    }
-
     // Ignore the first 3 transitions (sensor initial response)
     if (i < 4) {
       continue;
@@ -51,14 +46,19 @@ bool read_dht11_polling(int pin, Data *data) {
     // Data bits on falling edges (even index)
     if (i % 2 == 0) {
       raw[bits_recv / 8] <<= 1;
-      // Midpoint between 0-bit count (~12-15) and 1-bit count (~35-45)
+      // Threshold 16 is between 0-bit count (~10-14) and 1-bit count (~28-40)
       if (delay_counter_us > POLL_COUNTER_THRESHOLD) {
         raw[bits_recv / 8] |= 1;
       }
       bits_recv++;
       if (bits_recv >= TOTAL_BITS_PER_READ) {
-        break; // All 40 bits successfully received; prevents raw[5] buffer overflow
+        break; // All 40 bits successfully received!
       }
+    }
+
+    // If timeout occurred on pre-bit or line stayed idle, stop reading
+    if (delay_counter_us == 255) {
+      break;
     }
   }
 
