@@ -64,7 +64,7 @@ bool read_dht11_polling(int pin, Data *data) {
 
   // Verify 40 bits received and checksum matches
   if (bits_recv < TOTAL_BITS_PER_READ) {
-    printf(stderr, "Did not receive 40 bits: actual %d\n", bits_recv);
+    fprintf(stderr, "Did not receive 40 bits: actual %d\n", bits_recv);
     return false;
   }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
@@ -79,7 +79,7 @@ bool read_dht11_polling(int pin, Data *data) {
     return true;
   }
 
-  printf(stderr, "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
+  fprintf(stderr, "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
          sum, raw[4], raw[0], raw[1], raw[2], raw[3], raw[4]);
   return false;
 }
