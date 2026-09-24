@@ -43,12 +43,15 @@ static void sensor_read_isr(void) {
       pinMode(sensor_pin, INPUT);
     }
     break;
+
   case INPUT_JUST_ENABLED:
     current_state = HIGH_ACK;
     break;
+
   case HIGH_ACK:
     current_state = BIT_READ_RISING;
     break;
+
   case BIT_READ_RISING: {
     int current_us = micros(); // Get the time when this edge occurred
 
@@ -65,23 +68,27 @@ static void sensor_read_isr(void) {
     micros_previous_rising_edge = current_us;
 
     // Distinguish 0 vs 1 based on pulse high duration
-    if (prev_bit_high_time <= (MAX_TIME_FOR_ZERO_BIT_US + MAX_TIME_BUFFER)) {
+    if (prev_bit_high_time <= PULSE_WIDTH_THRESHOLD_US) {
       bits_rcvd[current_reading_bit_idx - 1] = 0;
-    } else if (prev_bit_high_time <=
-               (MAX_TIME_FOR_ONE_BIT_US + MAX_TIME_BUFFER)) {
-      bits_rcvd[current_reading_bit_idx - 1] = 1;
     } else {
-      current_state = ERROR_STATE;
+      bits_rcvd[current_reading_bit_idx - 1] = 1;
     }
 
-    ++current_reading_bit_idx; // Account for the this bit's high time
+    ++current_reading_bit_idx; // Account for this bit's high time
     if (current_reading_bit_idx >= TOTAL_BITS_PER_READ) {
       current_state = READ_COMPLETE;
-      delayMicroseconds(40);
-      if (digitalRead(sensor_pin) == LOW) {
-        bits_rcvd[current_reading_bit_idx - 1] = 0;
-      } else {
+      // Measure remaining high duration of bit 39
+      int bit39_counter = 0;
+      while (digitalRead(sensor_pin) == HIGH && bit39_counter < 100) {
+        delayMicroseconds(1);
+        bit39_counter++;
+      }
+
+      // Check against a lower number here to account for timing delays
+      if (bit39_counter > 15) {
         bits_rcvd[current_reading_bit_idx - 1] = 1;
+      } else {
+        bits_rcvd[current_reading_bit_idx - 1] = 0;
       }
     }
     break;
@@ -109,6 +116,7 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   // Register the ISR if not already done
   if (!isr_registered) {
+    pullUpDnControl(sensor_pin, PUD_UP);
     if (wiringPiISR(sensor_pin, INT_EDGE_RISING, sensor_read_isr) < 0) {
       return false;
     }
@@ -117,6 +125,8 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   // Clear buffers
   memset((void *)bits_rcvd, 0, sizeof(bits_rcvd));
+  current_reading_bit_idx = 0;
+  micros_previous_rising_edge = 0;
   read_ready = false;
 
   // Initiate read: pull line low for 18ms to signal DHT11
@@ -142,9 +152,11 @@ bool read_dht11_interrupt(int pin, Data *data) {
   pullUpDnControl(sensor_pin, PUD_UP);
 
   if (current_state != READ_COMPLETE) {
-    printf("Read did not complete\n");
+    current_state = READ_COMPLETE; // Still complete the read for next cycle
+    fprintf(stderr, "Read did not complete\n");
     return false;
   }
+  current_state = READ_COMPLETE;
 
   // Extract readings and checksum
   uint8_t humid_int = extract_byte_at_offset(bits_rcvd, 0);
@@ -155,7 +167,11 @@ bool read_dht11_interrupt(int pin, Data *data) {
 
   uint8_t sum = humid_int + humid_dec + temp_int + temp_dec;
   if (checksum_read != sum) {
-    printf("Checksum was wrong: actual %d\n", sum);
+    fprintf(
+        stderr,
+        "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
+        sum, checksum_read, humid_int, humid_dec, temp_int, temp_dec,
+        checksum_read);
     return false;
   }
 

@@ -13,10 +13,11 @@ static void req_measure(int pin) {
   // Start signal
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  delay(18); // Pull down for 18 ms
+  delay(18);
   digitalWrite(pin, HIGH);
-  delayMicroseconds(40); // Pull up for 40 microseconds
+  delayMicroseconds(40);
   pinMode(pin, INPUT);
+  pullUpDnControl(pin, PUD_UP);
 }
 
 // Returns false when the checksum is invalid or read timed out
@@ -36,22 +37,35 @@ bool read_dht11_polling(int pin, Data *data) {
         break; // Exceeded delay timeout
     }
     last_state = digitalRead(pin);
-    if (i < 4)
-      continue; // ignore first 3 transitions
 
-    // Data bits on falling edges (even)
+    // Ignore the first 3 transitions (sensor initial response)
+    if (i < 4) {
+      if (delay_counter_us == 255) {
+        break;
+      }
+      continue;
+    }
+
+    // Data bits on falling edges (even index)
     if (i % 2 == 0) {
       raw[bits_recv / 8] <<= 1;
-      if (delay_counter_us > PULSE_WIDTH_THRESHOLD_US) {
+      // Threshold 27 separates 0-bit count (~18-21) and 1-bit count (~35-44)
+      if (delay_counter_us > POLL_COUNTER_THRESHOLD) {
         raw[bits_recv / 8] |= 1;
       }
       bits_recv++;
+      if (bits_recv >= TOTAL_BITS_PER_READ)
+        break;
     }
+
+    // If timeout occurred on pre-bit or line stayed idle, stop reading
+    if (delay_counter_us == 255)
+      break;
   }
 
   // Verify 40 bits received and checksum matches
-  if (bits_recv < 40) {
-    printf("Did not receive 40 bits: actual %d\n", bits_recv);
+  if (bits_recv < TOTAL_BITS_PER_READ) {
+    fprintf(stderr, "Did not receive 40 bits: actual %d\n", bits_recv);
     return false;
   }
   uint8_t sum = raw[0] + raw[1] + raw[2] + raw[3];
@@ -66,6 +80,9 @@ bool read_dht11_polling(int pin, Data *data) {
     return true;
   }
 
-  printf("Checksum was wrong: actual %d\n", sum);
+  fprintf(
+      stderr,
+      "Checksum was wrong: actual %d != expected %d (raw: %d %d %d %d %d)\n",
+      sum, raw[4], raw[0], raw[1], raw[2], raw[3], raw[4]);
   return false;
 }
