@@ -111,6 +111,8 @@ The log shows two entries, one where the data was successfully read (checksum ve
 ==== Part 2 Results
 The interrupt-based implementation also successfully captured data, but experienced some noticeable differences with Part 1.
 
+We found that this part was less reliable than part 2. This was due to the interrupt-based approach relying on kernel-level interrupts to interact with user-space, meaning our code had to interact through the user-space/kernel-space barrier. This is not free, and suffers from delay when switching between the two modes. Part 1 was able to be more consistent and marginally faster since we did not have to front this cost.
+
 ===== Comparison with Polling
 #table(
   columns: 3,
@@ -119,13 +121,9 @@ The interrupt-based implementation also successfully captured data, but experien
   [High during reads due to spinning on the delay counter],
   [Low as the CPU can be idle until a rising edge fires],
 
-  [Sensitivity],
-  [Count will overflow if preempted],
-  [Sensitive to latency in response to interrupts],
+  [Sensitivity], [Count will overflow if preempted], [Sensitive to latency in response to interrupts],
 
-  [Complexity],
-  [Very simple linear loop],
-  [Complex state machine requiring more boilerplate and timestamp tracking],
+  [Complexity], [Very simple linear loop], [Complex state machine requiring more boilerplate and timestamp tracking],
 
   [Priority],
   [Benefits from real time round robin sched],
@@ -169,4 +167,41 @@ The five entries from this log, in order, show: A baseline reading of the room, 
 - The diagrams provided on canvas were often hard to decipher given the mix of English and non-English instructions
 
 === Notes:
--
+- GPIO pin layout:
+```txt
++-----+-----+---------+------+---+---Pi 3B--+---+------+---------+-----+-----+
+| BCM | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | BCM |
++-----+-----+---------+------+---+----++----+---+------+---------+-----+-----+
+|     |     |    3.3v |      |   |  1 || 2  |   |      | 5v      |     |     |
+|   2 |   8 |   SDA.1 | ALT0 | 1 |  3 || 4  |   |      | 5v      |     |     |
+|   3 |   9 |   SCL.1 | ALT0 | 1 |  5 || 6  |   |      | 0v      |     |     |
+|   4 |   7 | GPIO. 7 |   IN | 0 |  7 || 8  | 1 | ALT5 | TxD     | 15  | 14  |
+|     |     |      0v |      |   |  9 || 10 | 1 | ALT5 | RxD     | 16  | 15  |
+|  17 |   0 | GPIO. 0 |   IN | 0 | 11 || 12 | 0 | IN   | GPIO. 1 | 1   | 18  |
+|  27 |   2 | GPIO. 2 |   IN | 0 | 13 || 14 |   |      | 0v      |     |     |
+|  22 |   3 | GPIO. 3 |   IN | 0 | 15 || 16 | 0 | IN   | GPIO. 4 | 4   | 23  |
+|     |     |    3.3v |      |   | 17 || 18 | 0 | IN   | GPIO. 5 | 5   | 24  |
+|  10 |  12 |    MOSI | ALT0 | 0 | 19 || 20 |   |      | 0v      |     |     |
+|   9 |  13 |    MISO | ALT0 | 0 | 21 || 22 | 0 | IN   | GPIO. 6 | 6   | 25  |
+|  11 |  14 |    SCLK | ALT0 | 0 | 23 || 24 | 1 | OUT  | CE0     | 10  | 8   |
+|     |     |      0v |      |   | 25 || 26 | 1 | OUT  | CE1     | 11  | 7   |
+|   0 |  30 |   SDA.0 |   IN | 1 | 27 || 28 | 1 | IN   | SCL.0   | 31  | 1   |
+|   5 |  21 | GPIO.21 |   IN | 1 | 29 || 30 |   |      | 0v      |     |     |
+|   6 |  22 | GPIO.22 |   IN | 1 | 31 || 32 | 0 | IN   | GPIO.26 | 26  | 12  |
+|  13 |  23 | GPIO.23 |   IN | 0 | 33 || 34 |   |      | 0v      |     |     |
+|  19 |  24 | GPIO.24 |   IN | 0 | 35 || 36 | 0 | IN   | GPIO.27 | 27  | 16  |
+|  26 |  25 | GPIO.25 |   IN | 1 | 37 || 38 | 0 | IN   | GPIO.28 | 28  | 20  |
+|     |     |      0v |      |   | 39 || 40 | 0 | IN   | GPIO.29 | 29  | 21  |
++-----+-----+---------+------+---+----++----+---+------+---------+-----+-----+
+| BCM | wPi |   Name  | Mode | V | Physical | V | Mode | Name    | wPi | BCM |
++-----+-----+---------+------+---+---Pi 3B--+---+------+---------+-----+-----+
+```
+- Wiring the DHT11:
+  - The pin on the DHT11 with a '-' next to it is ground
+  - The pin in the center is the power pin (connected to 3.3V)
+  - The pin with an 'S' next to it is the sense pin, and it is connected to the sensor pin
+- A pull up resistor is needed to make the circuit work from the sense pin to the power rail
+  - Pull up meaning from the data pin to the power rail
+  - A resistor of 10 kOhm was used, though some guides mentioned 5 kOhm
+- The DHT11 sensor is super inconsistent, can be made more consistent by setting the process to a higher priority via `sched.h`
+- We demoed to the professor on Thursday, September 24th.
