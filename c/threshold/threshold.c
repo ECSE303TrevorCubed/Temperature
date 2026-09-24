@@ -1,6 +1,7 @@
 #include "threshold.h"
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "constants.h"
 
