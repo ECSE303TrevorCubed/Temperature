@@ -14,11 +14,11 @@ The objective of this assignment is to interface the Raspberry Pi with a DHT11 t
 ==== Hardware Configuration
 Communication with the DHT11 requires a bidirectional single-wire data line, power (3.3V) and ground. The data line must be connected to a GPIO pin on the pi as well as to a pull-up resistor of 10 kOhms (routed from the data pin to the 3.3V power rail). The LED actuator uses the LED circuit, where we used a small resistor (220 Ohms) and a red LED.
 - DHT11 Data Pin: Connected to GPIO 25 (`#define DHT11_PIN 25`) and a 10 kOhm pull up resistor
-    - The DHT11 features an `S` next to the data pin
+  - The DHT11 features an `S` next to the data pin
 - LED Indicator: Connected to GPIO 24 (`#define LED_PIN 24`), routed through a 220 Ohm resistor
 - Ground and Power: 3.3V power routed to the positive rail or ground to the negative rail on the breadboard.
-    - The DHT11 features a `-` next to the ground pin
-    - The power pin on the DHT11 is directly adjacent to the ground pin
+  - The DHT11 features a `-` next to the ground pin
+  - The power pin on the DHT11 is directly adjacent to the ground pin
 #image("hardware_configuration.jpg", width: 80%)
 The pins explained and shown above were chosen following the output of `gpio readall`.
 
@@ -32,54 +32,54 @@ The Pi must mange both bus direction (flipping between input and output on a sin
 2. Sensor Response
 - The DHT11 responds by pulling the line low for aout `80us`, followed by high for `80us`
 - The DHT11 then sends 40 bits of data (5 bytes)
-    - Byte 1: Relative Humidity Integer 
-    - Byte 2: Relative Humidity Decimal
-    - Byte 3: Relative Temperature Integer
-    - Byte 4: Relative Temperature Decimal
-    - Byte 5: Checksum
+  - Byte 1: Relative Humidity Integer
+  - Byte 2: Relative Humidity Decimal
+  - Byte 3: Relative Temperature Integer
+  - Byte 4: Relative Temperature Decimal
+  - Byte 5: Checksum
 #image("initial_response.png", width: 80%)
 
 3. Polling & Pulse Discrimination
 - A polling loop samples the pin's state and waits for it to change to the next state
 - Each data bit begins with a `50us` `LOW` level, followed by a variable width (based on data state) `HIGH` level:
-    - Bit '0': `26-28us` `HIGH`
-    - Bit '1': `70us` `HIGH`
+  - Bit '0': `26-28us` `HIGH`
+  - Bit '1': `70us` `HIGH`
 - A midpoint threshold of `45us` is used (`#define PULSE_WIDTH_THRESHOLD_US 45`), meaning that any counter durations over `45us` are considered `1`, otherwise `0`
 #image("data_timing_diagram.png", width: 80%)
 
 4. Data Verification & File Logging
 - The checksum is verified by adding the first 4 bits and comparing it to the actual 5th bit: `B0 + B1 + B2 + B3 == B4`
-    - Since the data are represented as bytes (`uint8_t`), they naturally wrap and the checksum is thus in modulo 256 arithmetic
+  - Since the data are represented as bytes (`uint8_t`), they naturally wrap and the checksum is thus in modulo 256 arithmetic
 - When valid, values are decoded into a struct (`Data`) and logged with a date and time to both the `stdout` stream (terminal) and a log file (`temper_poll.log`)
 
 ==== Part 2: Interrupt I/O Implementation
 
 1. ISR Registration
 - Configure the ISR interface using `wiringPiISR` on the rising edge (`INT_EDGE_RISING`)
-    - The arguments to this function are the pin, edge, and callback function
-    - The function is thus called with: `wiringPiISR(sensor_pin, INT_EDGE_RISING, sensor_read_isr)`
+  - The arguments to this function are the pin, edge, and callback function
+  - The function is thus called with: `wiringPiISR(sensor_pin, INT_EDGE_RISING, sensor_read_isr)`
 
 2. State Machine
 - `INIT_PULL_LINE_LOW`: The Pi asserts the `18ms` start pulse and transitions the line to `INPUT` with pull-up configuration
 - `INPUT_JUST_ENABLED` & `HIGH_ACK`: Absorbs the initial pulses from the sensor (see previous diagrams)
 - `BIT_READ_RISING`: On every rising edge, the ISR records timestamps using the `micros` function. The pulse width is then calculated by subtracting the previous rising edge time from the current time, minus the pre-bit delay (`50us`). Discrimination of the pulse is decoded with a `10us` buffer
-    - If the delta is less than `28us + 10us`, the bit is decoded as a zero
-    - If the delta is less than `70 + 10us`, the bit is decoded as a one
-    - Otherwise, the state machine moves to an error state since no data was recorded
+  - If the delta is less than `28us + 10us`, the bit is decoded as a zero
+  - If the delta is less than `70 + 10us`, the bit is decoded as a one
+  - Otherwise, the state machine moves to an error state since no data was recorded
 - `READ_COMPLETE`: Once all 40 bits are recorded, the bytes are extracted from te byte array via `extract_byte_at_offset`
-    - The bytes are checksummed following the procedure described in Part 1
+  - The bytes are checksummed following the procedure described in Part 1
 
 3. File Logging
 - All readings are recorded to `stdout` and a file (`temper_interrupt.log`)
 
 4. Mitigating Linux Non-Preemption
 - Both this part and part 1 use `try_set_prio(99)` to try and raise the execution to real time round robin scheduling
-    - This is done to attempt to mitigate the effect of interruptions from the linux scheduler
+  - This is done to attempt to mitigate the effect of interruptions from the linux scheduler
 
 ==== Part 3: LED Actuator over Moving Temperature Average
 
 1. Circular Buffer Smoothing
-- Readings will be gathered using Part 1's polling approach due to inconsistencies perceived in the interrupt-based method 
+- Readings will be gathered using Part 1's polling approach due to inconsistencies perceived in the interrupt-based method
 - The integer and decimal parts of the data are combined into a floating point value via `parse_from_parts(dec_part, frac_part)`
 - Parsed samples are pushed into a statically allocated 10 element floating point buffer (size determined at compile time via `#define MAXIMUM_TEMPERATURE_READINGS 10`)
 - `average_celsius()` returns the rolling average of the current buffer, reducing the impact of an erroneous reading
@@ -87,7 +87,7 @@ The Pi must mange both bus direction (flipping between input and output on a sin
 2. Threshold Handling
 - The sample loop polls every second (`#define LOOP_TIMEOUT_MS 1000`), consistent with parts 1 and 2
 - If the current average temperature exceeds the set threshold (`#define TEMPERATURE_THRESHOLD_CELSIUS 26.0`):
-    - `digitalWrite(LED_PIN, HIGH)` turns the red LED on
+  - `digitalWrite(LED_PIN, HIGH)` turns the red LED on
 - Otherwise, `digitalWrite(LED_PIN, LOW)` turns the LED off
 - All temperature readings are recorded to `stdout` and a file (`temper_threshold.log`)
 
@@ -114,13 +114,22 @@ The interrupt-based implementation also successfully captured data, but experien
 ===== Comparison with Polling
 #table(
   columns: 3,
-  table.header(
-    [*Metric*], [*Polling*], [*Interrupt*],
-  ),
-  [CPU Utilization], [High during reads due to spinning on the delay counter], [Low as the CPU can be idle until a rising edge fires],
-  [Sensitivity], [Count will overflow if preempted], [Sensitive to latency in response to interrupts],
-  [Complexity], [Very simple linear loop], [Complex state machine requiring more boilerplate and timestamp tracking],
-  [Priority], [Benefits from real time round robin sched], [Real time is necessary to prevent dropped/misclassified bits],
+  table.header([*Metric*], [*Polling*], [*Interrupt*]),
+  [CPU Utilization],
+  [High during reads due to spinning on the delay counter],
+  [Low as the CPU can be idle until a rising edge fires],
+
+  [Sensitivity],
+  [Count will overflow if preempted],
+  [Sensitive to latency in response to interrupts],
+
+  [Complexity],
+  [Very simple linear loop],
+  [Complex state machine requiring more boilerplate and timestamp tracking],
+
+  [Priority],
+  [Benefits from real time round robin sched],
+  [Real time is necessary to prevent dropped/misclassified bits],
 )
 
 ====== Snippet from Log File
@@ -160,4 +169,4 @@ The five entries from this log, in order, show: A baseline reading of the room, 
 - The diagrams provided on canvas were often hard to decipher given the mix of English and non-English instructions
 
 === Notes:
-- 
+-
