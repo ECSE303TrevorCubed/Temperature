@@ -123,6 +123,7 @@
                   temper_poll_c = pkgs.callPackage ./nix/poll.nix { wiringpi = wiringpi'; };
                   temper_interr_c = pkgs.callPackage ./nix/interrupt.nix { wiringpi = wiringpi'; };
                   temper_thresh_c = pkgs.callPackage ./nix/threshold.nix { wiringpi = wiringpi'; };
+                  temper_display_c = pkgs.callPackage ./nix/display.nix { wiringpi = wiringpi'; };
                 };
             temper_report = pkgs.callPackage ./nix/report.nix { };
             ci = pkgs.callPackage ./nix/ci.nix {
@@ -136,6 +137,7 @@
               temper_poll_c
               temper_interr_c
               temper_thresh_c
+              temper_display_c
               ;
             inherit temper_report ci;
           };
