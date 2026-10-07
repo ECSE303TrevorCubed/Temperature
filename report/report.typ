@@ -81,7 +81,7 @@ The Pi must mange both bus direction (flipping between input and output on a sin
 1. Circular Buffer Smoothing
 - Readings will be gathered using Part 1's polling approach due to inconsistencies perceived in the interrupt-based method
 - The integer and decimal parts of the data are combined into a floating point value via `parse_from_parts(dec_part, frac_part)`
-- Parsed samples are pushed into a statically allocated 10 element floating point buffer (size determined at compile time via `#define MAXIMUM_TEMPERATURE_READINGS 10`)
+- Parsed samples are pushed into a statically allocated 10 element floating point buffer (size determined at compile time via `#define MAXIMUM_BUFFERED_READINGS 10`)
 - `average_celsius()` returns the rolling average of the current buffer, reducing the impact of an erroneous reading
 
 2. Threshold Handling

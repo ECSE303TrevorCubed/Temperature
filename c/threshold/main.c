@@ -45,8 +45,9 @@ int main(void) {
     }
 
     else {
-      record_temperature(data.temperature_int, data.temperature_dec);
-      float current_average = average_celsius();
+      record_data(data);
+      averages_t current_averages = average_readings();
+      float current_average = current_averages.temperature;
       if (current_average > TEMPERATURE_THRESHOLD_CELSIUS) {
         digitalWrite(LED_PIN, HIGH);
       } else {

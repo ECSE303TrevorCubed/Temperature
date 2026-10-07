@@ -11,8 +11,8 @@ INTERR_SRCS = interrupt/main.c interrupt/interrupt.c
 INTERR_HDRS = interrupt/interrupt.h
 THRESH_SRCS = threshold/main.c poll/poll.c threshold/threshold.c
 THRESH_HDRS = poll/poll.h threshold/threshold.h
-DISPLAY_HDRS = poll/poll.h display/display.h
-DISPLAY_SRCS = display/display.c display/main.c
+DISPLAY_HDRS = poll/poll.h display/lcd.h threshold/threshold.h
+DISPLAY_SRCS = poll/poll.c display/lcd.c display/main.c threshold/threshold.c
 
 TARGETS = temper_poll temper_interr temper_thresh temper_display
 
@@ -28,7 +28,7 @@ temper_thresh: $(THRESH_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(THRESH_HDRS)
 	$(CC) $(CFLAGS) -Ipoll -o $@ $(THRESH_SRCS) $(COMMON_SRCS) $(LIBS)
 
 temper_display: $(DISPLAY_SRCS) $(COMMON_SRCS) $(COMMON_HDRS) $(DISPLAY_HDRS)
-	$(CC) $(CFLAGS) -Idisplay -o $@ $(DISPLAY_SRCS) $(COMMON_SRCS) $(LIBS)
+	$(CC) $(CFLAGS) -Idisplay -Ipoll -Ithreshold -o $@ $(DISPLAY_SRCS) $(COMMON_SRCS) $(LIBS)
 
 install: $(TARGETS)
 	install -d $(DESTDIR)$(out)/bin
