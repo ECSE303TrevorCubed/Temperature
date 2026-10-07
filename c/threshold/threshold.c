@@ -43,8 +43,8 @@ averages_t average_readings(void) {
     return avgs;
   float hum_sum = 0.0f, temp_sum = 0.0f;
   for (int i = 0; i < count; ++i) {
-    hum_sum += temperature_readings[i];
-    temp_sum += humidity_readings[i];
+    hum_sum += humidity_readings[i];
+    temp_sum += temperature_readings[i];
   }
   avgs.humidity = hum_sum / count;
   avgs.temperature = temp_sum / count;
