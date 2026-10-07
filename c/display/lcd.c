@@ -59,38 +59,13 @@ static void lcd_command(int fd, uint8_t cmd) { lcd_send(fd, cmd, PIN_CMD); }
 
 static void lcd_write(int fd, uint8_t ch) { lcd_send(fd, ch, PIN_RS); }
 
-static void lcd_vprintf(lcd_t lcd, const char *fmt, va_list args) {
-  char buf[1028];
-  va_list args_copy;
-  va_copy(args_copy, args);
-
-  int needed = vsnprintf(buf, sizeof(buf), fmt, args);
-  if (needed < 0) {
-    va_end(args_copy);
-    return;
-  }
-
-  if ((size_t)needed < sizeof(buf)) {
-    // Fits on the stack
-    lcd_puts(lcd, buf);
-  } else {
-    // Need to heap :(
-    char *heap_buf = malloc(needed + 1); // null term
-    if (heap_buf) {
-      vsnprintf(heap_buf, needed + 1, fmt,
-                args_copy); // Use copy since args was consumed
-      lcd_puts(lcd, heap_buf);
-      free(heap_buf);
-    }
-  }
-
-  va_end(args_copy);
-}
-
 void lcd_printf(lcd_t lcd, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  lcd_vprintf(lcd, fmt, args);
+
+  char buf[512]; // Should be long enough
+  vsnprintf(buf, sizeof(buf), fmt, args);
+  lcd_puts(lcd, buf);
   va_end(args);
 }
 
@@ -136,7 +111,7 @@ void lcd_puts(lcd_t lcd, const char *str) {
   }
 }
 
-void lcd_set_cursor(lcd_t lcd, uint8_t col, lcd_row_t row) {
+void lcd_set_cursor(lcd_t lcd, lcd_row_t row, uint8_t col) {
   if (row != ROW_TOP &&
       row != ROW_BOTTOM) // me when c's enums are always exhaustive
     return;

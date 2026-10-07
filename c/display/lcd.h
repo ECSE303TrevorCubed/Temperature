@@ -18,7 +18,7 @@ typedef enum {
 bool lcd_init(lcd_t *lcd);
 void lcd_puts(lcd_t lcd, const char *str);
 void lcd_printf(lcd_t lcd, const char *fmt, ...);
-void lcd_set_cursor(lcd_t lcd, uint8_t col, lcd_row_t row);
+void lcd_set_cursor(lcd_t lcd, lcd_row_t row, uint8_t col);
 void lcd_clear(lcd_t lcd);
 void lcd_home(lcd_t lcd);
 

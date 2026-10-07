@@ -54,9 +54,9 @@ int main(void) {
       averages_t current_averages = average_readings();
 
       lcd_clear(lcd); // So we don't have visual artifacts
-      lcd_set_cursor(lcd, 0, 0);
+      lcd_set_cursor(lcd, ROW_TOP, 0);
       lcd_printf(lcd, "Temp: %.1f C", current_averages.temperature);
-      lcd_set_cursor(lcd, 0, 1);
+      lcd_set_cursor(lcd, ROW_BOTTOM, 0);
       lcd_printf(lcd, "Humidity: %.1f %%", current_averages.humidity);
     }
 
