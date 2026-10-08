@@ -183,3 +183,4 @@ sudo /usr/sbin/i2cdetect -y 1
 - After changing the kernel settings with `raspi-config` a reboot is needed to interface with the I2C bus
 - `i2cdetect` is available via the `i2c-tools` package, which can be installed via `sudo apt install i2c-tools`
   - The binary is installed to `/usr/sbin`
+- We demoed to the TA on 10/8/26
