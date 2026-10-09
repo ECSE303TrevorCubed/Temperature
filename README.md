@@ -13,4 +13,5 @@ Authors: Trevor Swan, Justin Fossum, Trevor Nichols
    - `./temper_thresh` runs Part 3, the LED actuation logic
    - `./temper_display` runs Part 4, the LCD actuation logic
 
-Note that this submission covers Lab 2 Part 4 and Lab 3 as they are the same instructions.
+Note that this submission covers Lab 2 Part 4 and Lab 3 as they are the same
+instructions.
